@@ -1,0 +1,84 @@
+ENTERPOINT  = 0xC0100000
+
+ASM			= nasm
+CC          = i386-elf-gcc
+LD			= i386-elf-ld
+OBJCOPY     = i386-elf-objcopy
+CFLAGS      = -c -fno-builtin -I include/
+
+TARGET		= init.bin kernel.bin
+
+OBJS        = build/kernel_asm.o build/kernel_c.o build/page.o build/kmalloc.o build/tty.o \
+              build/stdio.o build/stdlib.o build/unistd.o build/string.o build/math.o \
+			  build/arch_i386.o
+
+all : clean everything image
+
+everything : init.bin kernel.bin
+
+clean :
+	rm -f build/*
+
+image: everything buildimg
+
+buildimg:
+	cat build/init.bin build/kernel.bin > build/init
+	hdiutil attach -imagekey diskimage-class=CRawDiskImage c1.img
+	cp build/init /Volumes/NO\ NAME/init
+	hdiutil detach /Volumes/NO\ NAME/
+
+init.bin : kernel/init/init.asm kernel/init/memory.asm kernel/init/protected_mode.asm kernel/init/page.asm
+	$(ASM)  -o build/$@ $<
+
+kernel.bin: build/kernel.elf
+	$(OBJCOPY) -O binary build/kernel.elf build/kernel.bin
+	
+build/kernel.elf : $(OBJS)
+	$(LD) -s -Ttext $(ENTERPOINT) -m elf_i386 -o build/kernel.elf $(OBJS)
+
+build/kernel_asm.o : kernel/kernel.asm
+	$(ASM) -f elf -o $@ $<
+
+build/kernel_c.o : kernel/kernel.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+build/%.o : mm/%.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+# build/kmalloc.o : mm/kmalloc.c include/system/page.h
+# 	$(CC) $(CFLAGS) -o $@ $<
+
+build/tty.o : kernel/tty.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+
+#lib
+build/%.o : lib/%.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+# build/%_asm.o : lib/%.asm
+# 	$(ASM) -f elf -o $@ $<
+# build/stdlib.o: lib/stdlib.c
+# 	$(CC) $(CFLAGS) -o $@ $<
+
+# build/unistd.o: lib/unistd.c
+# 	$(CC) $(CFLAGS) -o $@ $<
+
+# build/stdio.o: lib/stdio.c
+# 	$(CC) $(CFLAGS) -o $@ $<
+
+# build/string_asm.o : lib/string.asm
+# 	$(ASM) -f elf -o $@ $<
+
+# build/string_c.o : lib/string.c
+# 	$(CC) $(CFLAGS) -o $@ $<
+
+# build/string.o : build/string_asm.o build/string_c.o
+# 	$(LD) -r -m elf_i386 -o build/string.o build/string_asm.o build/string_c.o
+
+# build/math.o : lib/math.c
+# 	$(CC) $(CFLAGS) -o $@ $<
+
+#arch
+build/arch_i386.o: arch/i386/init.c
+	$(CC) $(CFLAGS) -o $@ $<

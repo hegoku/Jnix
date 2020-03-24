@@ -1,0 +1,6 @@
+.vscode/
+bochsout.txt
+*.DS_Store
+*.img
+*.vdi
+*.so
