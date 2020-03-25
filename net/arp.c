@@ -125,7 +125,7 @@ int arp_send(int type, int ptype, unsigned int dest_ip, struct net_device *dev, 
         dest_hw = boardcast;
     }
 
-    struct ethhdr *eth = kmalloc(sizeof(struct ethhdr));
+    struct ethhdr *eth = kzmalloc(sizeof(struct ethhdr));
     if (dev_hard_header(eth, dev, ptype, dest_hw, src_hw)<0) {
         goto out;
     }
@@ -153,6 +153,7 @@ int arp_send(int type, int ptype, unsigned int dest_ip, struct net_device *dev, 
 
     dev->send(dev, temp, sizeof(struct ethhdr)+sizeof(struct arphdr));
     kfree(temp, sizeof(struct ethhdr) + sizeof(struct arphdr));
+    kfree(arp, sizeof(struct arphdr));
 out:
     kfree(eth, sizeof(struct ethhdr));
     return 0;

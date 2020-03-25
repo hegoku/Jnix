@@ -66,9 +66,24 @@
 
 #define IPV4_BEET_PHMAXLEN 8
 
+#define IPV4_MAX_LEN 65535
+
+//ip协议
+#define IP_P_HOPOPT 0x00 //IPv6逐跳选项
+#define IP_P_ICMP 0x01
+#define IP_P_IGMP 0x02
+#define IP_P_GGP 0x03 //网关对网关协议
+#define IP_P_IPv4 0x04 //IPv4 (封装)
+#define IP_P_ST 0x05 //因特网流协议
+#define IP_P_TCP 0x06
+#define IP_P_UDP 0x11
+#define IP_P_IPv6 0x29 //IPv6 封装
+
 struct iphdr {
-	unsigned char	version:4;
+    //网络是big endian, x86是little endian, 所以要反过来
     unsigned char   ihl:4;
+	unsigned char	version:4;
+    //
 	unsigned char	tos;
 	unsigned short	tot_len;
 	unsigned short	id;
@@ -81,5 +96,8 @@ struct iphdr {
 	/*The options start here. */
 } __attribute__((packed));
 
+int ip_send(int type, unsigned int dest_ip, struct net_device *dev, unsigned int src_ip, const unsigned char *target_hw, unsigned char *data, unsigned short size);
 int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev);
+
+unsigned short ip_hdr_checksum(unsigned short *buffer, int size);
 #endif
