@@ -2,7 +2,7 @@
 #define _ARCH_I386_H
 
 // #define PAGE_DIR_BASE 0x1000 //页目录存放地址
-#define PAGE_TABLE_BASE 0x200000 //页表存放起始地址
+#define PAGE_TABLE_BASE 0x200000 //页表存放起始地址 2MB
 #define PAGE_DIR_BASE PAGE_TABLE_BASE-0x1000 //页目录存放地址
 
 /*----------------------------------------------------------------------------

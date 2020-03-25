@@ -66,12 +66,53 @@ void hash_put(struct hash_map *map, unsigned int ip, unsigned char* mac)
 unsigned char* hash_get(struct hash_map *map, unsigned int ip)
 {
     int index = hash_code(map, ip);
-    printk("%x ", index);
     struct hash_entry *e = &(map->list[index]);
     while(e->ip!=0 && ip!=e->ip) {
         e = e->next;
     }
     return e->mac;
+}
+
+void hash_remove(struct hash_map *map, unsigned int ip) {
+    int index = hash_code(map, ip);
+    struct hash_entry *entry = &(map->list[index]);
+    if (entry->ip == 0) {
+        return;
+    }
+    if (entry->ip==ip) {
+        map->size--;
+        if (entry->next != 0) {
+            struct hash_entry *temp = entry->next;
+            entry->ip = temp->ip;
+            memcpy(entry->mac, temp->mac, 6);
+            entry->next = temp->next;
+            kfree(temp, sizeof(struct hash_entry));
+        }
+        else {
+            entry->ip = 0;
+            memset(entry->mac, 0, 6);
+        }
+    }
+    else {
+        struct hash_entry *p = entry;
+        entry = entry->next;
+        while (entry != 0) {
+            if (entry->ip==ip) {
+                map->size--;
+                p->next = entry->next;
+                kfree(entry, sizeof(struct hash_entry));
+                break;
+            }
+            p = entry;
+            entry = entry->next;
+        };
+    }
+}
+
+void hash_clear(struct hash_map *map) {
+    memset(arp_map->list, 0, sizeof(struct hash_entry)*10);
+    map->list = 0;
+    map->size = 0;
 }
 
 int arp_send(int type, int ptype, unsigned int dest_ip, struct net_device *dev, unsigned int src_ip, const unsigned char *dest_hw, const unsigned char *src_hw, const unsigned char *target_hw)

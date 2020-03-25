@@ -110,7 +110,7 @@ static void console_set_cursor(unsigned int position)
     out_byte(CRTC_DATA_REG, (position >> 8) & 0xFF);
 	out_byte(CRTC_ADDR_REG, CURSOR_L);
 	out_byte(CRTC_DATA_REG, position & 0xFF);
-    asm("sti");
+    // asm("sti");
 }
 
 static void set_console_start_addr(unsigned int addr)
@@ -120,7 +120,7 @@ static void set_console_start_addr(unsigned int addr)
     out_byte(CRTC_DATA_REG, (addr>>8)&0xff);
     out_byte(CRTC_ADDR_REG, START_ADDR_L);
     out_byte(CRTC_DATA_REG, addr&0xff);
-    asm("sti");
+    // asm("sti");
 }
 
 void scroll_screen(CONSOLE* p_con, int direction)

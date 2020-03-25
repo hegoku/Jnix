@@ -72,7 +72,7 @@ static void reset_paging(int mem_size)
     //     high_mem = HIGH_MEMORY;
     // }
 
-    unsigned int page_table_count;
+    unsigned int page_table_count; //页目录个数
     if (HIGH_MEMORY > mem_size) {
         page_table_count = (mem_size + 0x400000 - 1) / 0x400000;
     } else {
@@ -83,21 +83,22 @@ static void reset_paging(int mem_size)
     int j = 0;
     int i = 0;
 
+    //分配1G的内核空间，即将mem_size的物理内存映射到 虚拟内存的 3G-4G
     struct PageTable *pt = (struct PageTable *)__va(PAGE_TABLE_BASE);
     struct PageDir *pg = (struct PageDir *)__va(PAGE_DIR_BASE);
-    for (j = 0; j < page_table_count; j++)
+    for (j = 0; j < page_table_count; j++) //768是3G虚拟内存所在的页目录下表
     {
         for (i = 0; i < 1024; i++)
         {
             pt->entry[i] = a | PG_P | PG_RWW | PG_USS;
             a += 4096;
         }
-        pg->entry[768+j] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USS;
+        pg->entry[j+768] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USS;
         pt++;
     }
     load_cr3(PAGE_DIR_BASE);
 
-    page_table_count = (mem_size + 0x400000 - 1) / 0x400000;
+    // page_table_count = (mem_size + 0x400000 - 1) / 0x400000;
     mem_map=(struct Page*)__va(PAGE_TABLE_BASE+0x100000);
     struct Page *page_ptr = mem_map;
     unsigned int mem_map_size = sizeof(struct Page) * 1024 * page_table_count/(1024*4);
@@ -164,17 +165,16 @@ static void reset_paging(int mem_size)
 
 void init_arch()
 {
+    init_tty();
     int mem_size = load_memory_size();
     reset_paging(mem_size);
     init_ldt();
     init_8259A();
-    init_tty();
     pci_select_drivers();
     pcibios_irq_init();
 
     do_initcalls();
 
-    // register_netdev(&am79c793);
     sendNet();
     while (1)
     {

@@ -5,7 +5,7 @@
 #define PAGE_SIZE 1024*4
 #define PAGE_SHIFT 12
 
-#define HIGH_MEMORY 0x38000000
+#define HIGH_MEMORY 0x38000000 //896MB
 
 #define PG_P_ADDR unsigned int //物理页的物理地址
 #define PG_KV_ADDR unsigned int //物理页在内核空间的虚拟地址

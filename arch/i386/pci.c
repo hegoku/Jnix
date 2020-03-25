@@ -52,7 +52,7 @@ void pci_select_drivers()
                     desc->next = pci_device->next;
                     pci_device->next = desc;
                 }
-				// printk("PCI BUS:%x DEVICE:%x FUNC:%x VENDOR:%x DEVICE_ID:%x H:%x %s\n", bus, device, func, desc->vendor_id, desc->device_id, desc->header_type, PCI_CLASS_CODE[desc->class_id]);
+				printk("PCI BUS:%x DEVICE:%x FUNC:%x VENDOR:%x DEVICE_ID:%x H:%x %s\n", bus, device, func, desc->vendor_id, desc->device_id, desc->header_type, PCI_CLASS_CODE[desc->class_id]);
                 // PCI_DEVICE_BA *next = desc->ba;
                 // while (next->next!=0)
                 // {
