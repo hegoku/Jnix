@@ -54,7 +54,7 @@ int icmp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
 {
     struct iphdr *ip = (struct iphdr*)((unsigned int)packet + sizeof(struct ethhdr));
     unsigned short body_offset = ntohs(ip->tot_len) - (unsigned short)ip->ihl; //ip数据部分开始位置
-    if (ip_hdr_checksum((unsigned short*)ip, ip->ihl * 32/8)!=0) {
+    if (ip_hdr_checksum((unsigned short*)ip, ip->ihl * 4)!=0) {
         return -1;
     }
 
@@ -67,9 +67,9 @@ int icmp_echo(struct net_device *dev, unsigned short id, unsigned short sequence
 	struct icmphdr *icmp=kzmalloc(sizeof(struct icmphdr));
     icmp->type=ICMP_ECHO;
     icmp->code=0;
-    icmp->un.echo.id=id;
-    icmp->un.echo.sequence=sequence;
-    icmp->checksum=ip_hdr_checksum((unsigned short*)icmp, sizeof(struct icmphdr));
+    icmp->un.echo.id=htons(id);
+    icmp->un.echo.sequence=htons(sequence);
+    icmp->checksum=htons(ip_hdr_checksum((unsigned short*)icmp, sizeof(struct icmphdr)));
 
     ip_send(IP_P_ICMP, sequence, dest_ip, dev->ip, dev, (unsigned char*)icmp, sizeof(struct icmphdr));
     kfree(icmp, sizeof(struct icmphdr));

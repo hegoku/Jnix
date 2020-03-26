@@ -13,16 +13,16 @@ int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_
         return -1;
     }
 
-    unsigned char *dest_hw=arp_find(dev, dest_ip);
-    unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
-    int a=dest_hw[0]+dest_hw[1]+dest_hw[2]+dest_hw[3]+dest_hw[4]+dest_hw[5];
-    if (a==0) {
-        printk("unkown ip: %d.%d.%d.%d\n", dest_ip);
-        return -1;
-    }
-
-
-    unsigned int buffer_size=sizeof(struct ethhdr)+sizeof(struct iphdr)+size;
+    // unsigned char *dest_hw=arp_find(dev, dest_ip);
+    // unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
+    // int a=dest_hw[0]+dest_hw[1]+dest_hw[2]+dest_hw[3]+dest_hw[4]+dest_hw[5];
+    // if (a==0) {
+    //     printk("unkown ip: %x\n", dest_ip);
+    //     return -1;
+    // }
+    printk("unkown ip: %x\n", size);
+    unsigned char dest_hw[] = {0x52,0x54,0x00,0x12,0x35,0x02};
+    unsigned int buffer_size = sizeof(struct ethhdr) + sizeof(struct iphdr) + size;
     unsigned char *buffer=kzmalloc(buffer_size);
     struct ethhdr *eth = (struct ethhdr*)buffer;
     if (dev_hard_header(eth, dev, ETH_P_IP, dest_hw, dev->dev_addr)<0) {
@@ -34,11 +34,14 @@ int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_
     ip->saddr=src_ip;
     ip->protocol=type;
     ip->version=4;
-    ip->ihl=sizeof(struct iphdr)/32;
-    ip->tot_len=htons(ip->ihl+size);
+    ip->ihl=sizeof(struct iphdr)/4;
+    ip->tot_len=htons(sizeof(struct iphdr)+size);
     ip->ttl=0x40;
     ip->id=htons(id);
-    ip->check=htons(ip_hdr_checksum((unsigned short*)ip, ip->tot_len));
+
+    memcpy((void*)((unsigned int)ip+sizeof(struct iphdr)), data, size);
+    
+    ip->check=htons(ip_hdr_checksum((unsigned short*)ip, sizeof(struct iphdr)+size));
 
     return dev->send(dev, buffer, buffer_size);
 out:
@@ -70,13 +73,11 @@ unsigned short ip_hdr_checksum(unsigned short* buffer, int size)
     {
         cksum += htons(*buffer++);
         size -= sizeof(unsigned short);
-        printk("%x ", cksum);
     }
     if(size)
     {
         cksum += *(unsigned char*)buffer;
     }
-    printk("\n");
     cksum = (cksum >> 16) + (cksum & 0xffff);
     cksum += (cksum>>16); 
     return (unsigned short)(~cksum);
