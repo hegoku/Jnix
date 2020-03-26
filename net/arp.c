@@ -198,6 +198,25 @@ int arp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
     }
 }
 
+unsigned char *arp_find(struct net_device *dev, unsigned int ip)
+{
+    if (arp_map==0) {
+        arp_map = (struct hash_map*)kzmalloc(sizeof(struct hash_map));
+        arp_map->list = (struct hash_entry*)kzmalloc(sizeof(struct hash_entry)*10);
+        arp_map->list_size = 10;
+        arp_map->size = 0;
+    }
+    unsigned char *mac=hash_get(arp_map, ip);
+    unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
+    int a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
+    if (a==0) {
+        arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(ip), dev, htonl(dev->ip), 0, 0, 0);
+        return hash_get(arp_map, ip);
+    } else {
+        return mac;
+    }
+}
+
 // struct skb *arp_create(int type, int ptype, unsigned int dest_ip, struct net_device *dev, unsigned int src_ip, const unsigned char *dest_hw, const unsigned char *src_hw, const unsigned char *target_hw)
 // {
 //     struct skb *skb=kzmalloc(sizeof(skb));

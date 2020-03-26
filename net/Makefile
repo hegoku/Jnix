@@ -4,7 +4,7 @@ LD			= i386-elf-ld
 OBJCOPY     = i386-elf-objcopy
 CFLAGS      = -c -fno-builtin -mgeneral-regs-only -I ../include/
 
-OBJS        = ../build/netdevice.o ../build/arp.o ../build/ip.o
+OBJS        = ../build/netdevice.o ../build/arp.o ../build/ip.o ../build/icmp.o
 
 all : everything
 
@@ -20,6 +20,9 @@ everything : net.o
 	$(CC) $(CFLAGS) -o $@ $<
 
 ../build/ip.o : ip.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+../build/icmp.o : icmp.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 net.o: $(OBJS)

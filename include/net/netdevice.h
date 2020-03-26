@@ -7,6 +7,7 @@ struct net_device {
     char name[256];
 
     unsigned char dev_addr[6];
+    unsigned int ip;
 
     int irq;
 

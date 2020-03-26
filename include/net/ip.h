@@ -96,7 +96,7 @@ struct iphdr {
 	/*The options start here. */
 } __attribute__((packed));
 
-int ip_send(int type, unsigned int dest_ip, struct net_device *dev, unsigned int src_ip, const unsigned char *target_hw, unsigned char *data, unsigned short size);
+int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_ip, struct net_device *dev, unsigned char *data, unsigned short size);
 int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev);
 
 unsigned short ip_hdr_checksum(unsigned short *buffer, int size);

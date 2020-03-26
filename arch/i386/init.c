@@ -17,6 +17,7 @@
 #include <net/netdevice.h>
 #include <system/init.h>
 #include <net/net.h>
+#include <net/icmp.h>
 
 void sendNet();
 
@@ -183,7 +184,10 @@ void init_arch()
 
 void sendNet()
 {
-    arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(0x0a00020C), &am79c793, htonl(0x0a00020f), 0, 0, 0);
+    am79c793.ip=0x0a00020f;
+    // icmp_echo(&am79c793, 1, 2, 0xc00a003A);
+    icmp_echo(&am79c793, 1, 2, 0x0a000202);
+    // arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(0x0a00020C), &am79c793, htonl(0x0a00020f), 0, 0, 0);
     while(1){}
     struct ethhdr aa;
     aa.h_dest[0] = 0xff;

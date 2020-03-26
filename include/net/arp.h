@@ -105,4 +105,5 @@ struct arphdr {
 
 int arp_send(int type, int ptype, unsigned int dest_ip, struct net_device *dev, unsigned int src_ip, const unsigned char *dest_hw, const unsigned char *src_hw, const unsigned char *target_hw);
 int arp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev);
+unsigned char *arp_find(struct net_device *dev, unsigned int ip);
 #endif
