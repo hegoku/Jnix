@@ -4,8 +4,8 @@ LD			= i386-elf-ld
 OBJCOPY     = i386-elf-objcopy
 CFLAGS      = -c -fno-builtin -mgeneral-regs-only -I ../../include/
 
-OBJS        = ../../build/8259A.o ../../build/idt.o ../../build/init.o ../../build/desc.o ../../build/pci.o ../../build/bios.o \
-			  ../../build/vga.o ../../build/am79c793.o
+OBJS        = ../../build/8259A.o ../../build/idt.o ../../build/init.o ../../build/desc.o ../../build/pci.o ../../build/bios.o ../../build/timer.o \
+			  ../../build/vga.o 
 
 all : everything
 
@@ -32,11 +32,14 @@ everything : arch/i386.o
 ../../build/bios.o : bios.c
 	$(CC) $(CFLAGS) -o $@ $<
 
+../../build/timer.o : timer.c
+	$(CC) $(CFLAGS) -o $@ $<
+
 ../../build/vga.o : vga.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/am79c793.o : am79c793.c
-	$(CC) $(CFLAGS) -o $@ $<
+# ../../build/am79c793.o : am79c793.c
+# 	$(CC) $(CFLAGS) -o $@ $<
 
 
 arch/i386.o: $(OBJS)

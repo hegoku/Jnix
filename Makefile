@@ -6,7 +6,7 @@ LD			= i386-elf-ld
 OBJCOPY     = i386-elf-objcopy
 CFLAGS      = -c -fno-builtin -I include/
 
-SUBDIR=lib mm arch/i386 net
+SUBDIR=lib mm arch/i386 net drivers/i386
 BUILDSUBDIR = $(SUBDIR:%=build-%)
 CLEANSUBDIR = $(SUBDIR:%=clean-%)
 OBJSUBDIR = $(SUBDIR:%=build/%.o)

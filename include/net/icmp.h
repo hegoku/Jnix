@@ -69,4 +69,5 @@ struct icmphdr {
 
 int icmp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev);
 int icmp_echo(struct net_device *dev, unsigned short id, unsigned short sequence, unsigned int dest_ip);
+int icmp_echoreply(struct net_device *dev, unsigned short id, unsigned short sequence, unsigned int dest_ip);
 #endif

@@ -3,12 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <system/tty.h>
+#include <ctype.h>
 
 #define STR_DEFAULT_LEN 1024
-
-/* we use this so that we can do without the ctype library */
-#define isdigit(c)	((c) >= '0' && (c) <= '9')
-#define isspace(c)	((c) == ' ')
 
 static int skip_atoi(const char **s)
 {

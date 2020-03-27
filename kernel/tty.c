@@ -39,7 +39,6 @@ TTY tty_create(unsigned char id)
     return tty;
 }
 
-
 unsigned int tty_write(int mi_dev, char* buf, int len)
 {
     TTY *tty = &tty_table[mi_dev];

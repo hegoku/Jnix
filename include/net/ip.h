@@ -100,4 +100,5 @@ int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_
 int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev);
 
 unsigned short ip_hdr_checksum(unsigned short *buffer, int size);
+int inet_aton(const char *cp);
 #endif

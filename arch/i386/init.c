@@ -9,15 +9,17 @@
 #include <arch/i386/bios.h>
 #include <system/tty.h>
 #include <stdio.h>
-#include <arch/i386/am79c793.h>
+#include <drivers/i386/am79c793.h>
 #include <net/ether.h>
 #include <net/arp.h>
 #include <string.h>
 #include <system/mm.h>
+#include <arch/i386/timer.h>
 #include <net/netdevice.h>
 #include <system/init.h>
 #include <net/net.h>
 #include <net/icmp.h>
+#include <net/ip.h>
 
 void sendNet();
 
@@ -173,9 +175,9 @@ void init_arch()
     init_8259A();
     pci_select_drivers();
     pcibios_irq_init();
+    timer_init();
 
     do_initcalls();
-
     sendNet();
     while (1)
     {
@@ -184,8 +186,15 @@ void init_arch()
 
 void sendNet()
 {
-    am79c793.ip=0x0a00020f;
-    icmp_echo(&am79c793, 1, 2, 0xc00a0204);
+    am79c793.ip=inet_aton("10.0.2.12");
+    // unsigned char *mac=0;
+    // unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
+    int a=0;
+    while(a==0) {
+        unsigned char *mac=arp_find(&am79c793, inet_aton("10.0.2.15"));
+        int a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
+    }
+    icmp_echo(&am79c793, 1, 1, "10.0.2.15");
     // icmp_echo(&am79c793, 1, 2, 0x0a000202);
     // arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(0x0a000202), &am79c793, htonl(0x0a00020f), 0, 0, 0);
     while(1){}

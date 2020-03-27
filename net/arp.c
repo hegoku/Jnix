@@ -209,9 +209,6 @@ unsigned char *arp_find(struct net_device *dev, unsigned int ip)
     unsigned char *mac=hash_get(arp_map, htonl(ip));
     unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
     int a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
-    while(a==0) {
-        arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(ip), dev, htonl(dev->ip), 0, 0, 0);
-    }
     if (a==0) {
         arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(ip), dev, htonl(dev->ip), 0, 0, 0);
         return hash_get(arp_map, ip);

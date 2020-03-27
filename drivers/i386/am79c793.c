@@ -1,5 +1,5 @@
 #include <arch/i386/pci.h>
-#include <arch/i386/am79c793.h>
+#include <drivers/i386/am79c793.h>
 #include <arch/i386/8295A.h>
 #include <arch/i386/io.h>
 #include <arch/i386/idt.h>
@@ -15,7 +15,7 @@ int rx_buffer_count = 32;              // total number of receive buffers
 int tx_buffer_count = 8;               // total number of transmit buffers
 unsigned int buffer_size = 1544;
 
-void __attribute__((interrupt)) interrupt_handle(struct interrupt_frame *frame);
+static void __attribute__((interrupt)) am79c_interrupt_handle(struct interrupt_frame *frame);
 void receive(struct net_device *dev);
 
 int am79c793_probe(struct net_device *dev)
@@ -48,7 +48,7 @@ int init(struct net_device *dev)
     if (am79c793_probe(dev)==-1) {
         return -1;
     }
-    register_interrupt(INT_VECTOR_IRQ0 + dev->irq, interrupt_handle, dev);
+    register_interrupt(INT_VECTOR_IRQ0 + dev->irq, am79c_interrupt_handle, dev);
     enable_8259A_irq(dev->irq);
 
     // //reset
@@ -164,7 +164,7 @@ void receive(struct net_device *dev)
                 printk("%02x ", buffer[i]);
             }
             printk("\n");
-            reveice_callback(buffer, size, dev);
+            reveice_callback(buffer, size-4, dev); //去掉最后4字节的CRC校验码
             // if(handler != 0)
             //     if(handler->OnRawDataReceived(buffer, size))
             //         Send(buffer, size);
@@ -256,7 +256,7 @@ struct net_device am79c793 = {
     send:send
 };
 
-void __attribute__ ((interrupt)) interrupt_handle(struct interrupt_frame *frame)
+static void __attribute__ ((interrupt)) am79c_interrupt_handle(struct interrupt_frame *frame)
 {
     disable_8259A_irq(am79c793.irq);
     // eoi_8259A();

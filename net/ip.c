@@ -6,6 +6,7 @@
 #include <net/arp.h>
 #include <string.h>
 #include <system/mm.h>
+#include <ctype.h>
 
 int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_ip, struct net_device *dev, unsigned char *data, unsigned short size)
 {
@@ -13,15 +14,14 @@ int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_
         return -1;
     }
 
-    // unsigned char *dest_hw=arp_find(dev, dest_ip);
-    // unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
-    // int a=dest_hw[0]+dest_hw[1]+dest_hw[2]+dest_hw[3]+dest_hw[4]+dest_hw[5];
-    // if (a==0) {
-    //     printk("unkown ip: %x\n", dest_ip);
-    //     return -1;
-    // }
-    printk("unkown ip: %x\n", size);
-    unsigned char dest_hw[] = {0x52,0x54,0x00,0x12,0x35,0x02};
+    unsigned char *dest_hw=arp_find(dev, dest_ip);
+    unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
+    int a=dest_hw[0]+dest_hw[1]+dest_hw[2]+dest_hw[3]+dest_hw[4]+dest_hw[5];
+    if (a==0) {
+        printk("unkown ip: %x\n", dest_ip);
+        return -1;
+    }
+    
     unsigned int buffer_size = sizeof(struct ethhdr) + sizeof(struct iphdr) + size;
     unsigned char *buffer=kzmalloc(buffer_size);
     struct ethhdr *eth = (struct ethhdr*)buffer;
@@ -52,12 +52,16 @@ out:
 int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
 {
     struct iphdr *ip = (struct iphdr*)((unsigned int)packet + sizeof(struct ethhdr));
-    size -= sizeof(struct iphdr);
+    size -= sizeof(struct ethhdr);
 
-    switch (ntohs(ip->protocol))
+    if (ip_hdr_checksum((unsigned short*)ip, size)!=0) {
+        return -1;
+    }
+
+    switch (ip->protocol)
     {
         case IP_P_ICMP:
-            return icmp_rcv(packet, size, dev);
+            return icmp_rcv(ip, size, dev);
         case IP_P_TCP:
             break;
         case IP_P_UDP:
@@ -79,6 +83,88 @@ unsigned short ip_hdr_checksum(unsigned short* buffer, int size)
         cksum += *(unsigned char*)buffer;
     }
     cksum = (cksum >> 16) + (cksum & 0xffff);
-    cksum += (cksum>>16); 
+    cksum += (cksum>>16);
     return (unsigned short)(~cksum);
+}
+
+int inet_aton(const char *cp)
+{
+	unsigned int val, base, n;
+	char c;
+	unsigned int parts[4], *pp = parts;
+
+	for (;;) {
+		/*
+		 * Collect number up to ``.''.
+		 * Values are specified as for C:
+		 * 0x=hex, 0=octal, other=decimal.
+		 */
+		val = 0; base = 10;
+		if (*cp == '0') {
+			if (*++cp == 'x' || *cp == 'X')
+				base = 16, cp++;
+			else
+				base = 8;
+		}
+		while ((c = *cp) != '\0') {
+			if (isascii(c) && isdigit(c)) {
+				val = (val * base) + (c - '0');
+				cp++;
+				continue;
+			}
+			if (base == 16 && isascii(c) && isxdigit(c)) {
+				val = (val << 4) + 
+					(c + 10 - (islower(c) ? 'a' : 'A'));
+				cp++;
+				continue;
+			}
+			break;
+		}
+		if (*cp == '.') {
+			/*
+			 * Internet format:
+			 *	a.b.c.d
+			 *	a.b.c	(with c treated as 16-bits)
+			 *	a.b	(with b treated as 24 bits)
+			 */
+			if (pp >= parts + 3 || val > 0xff)
+				return (0);
+			*pp++ = val, cp++;
+		} else
+			break;
+	}
+	/*
+	 * Check for trailing characters.
+	 */
+	if (*cp && (!isascii(*cp) || !isspace(*cp)))
+		return (0);
+	/*
+	 * Concoct the address according to
+	 * the number of parts specified.
+	 */
+	n = pp - parts + 1;
+	switch (n) {
+
+	case 1:				/* a -- 32 bits */
+		break;
+
+	case 2:				/* a.b -- 8.24 bits */
+		if (val > 0xffffff)
+			return (0);
+		val |= parts[0] << 24;
+		break;
+
+	case 3:				/* a.b.c -- 8.8.16 bits */
+		if (val > 0xffff)
+			return (0);
+		val |= (parts[0] << 24) | (parts[1] << 16);
+		break;
+
+	case 4:				/* a.b.c.d -- 8.8.8.8 bits */
+		if (val > 0xff)
+			return (0);
+		val |= (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8);
+		break;
+	}
+    return val;
 }

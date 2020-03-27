@@ -52,10 +52,19 @@ int icmp_send(int type, int code, unsigned int dest_ip, struct net_device *dev, 
 
 int icmp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
 {
-    struct iphdr *ip = (struct iphdr*)((unsigned int)packet + sizeof(struct ethhdr));
-    unsigned short body_offset = ntohs(ip->tot_len) - (unsigned short)ip->ihl; //ip数据部分开始位置
-    if (ip_hdr_checksum((unsigned short*)ip, ip->ihl * 4)!=0) {
+    struct iphdr *ip = (struct iphdr*)((unsigned int)packet);
+    unsigned short body_offset = (unsigned short)ip->ihl*4; //ip数据部分开始位置
+    struct icmphdr *icmp=(struct icmphdr*)((unsigned int)ip+body_offset);
+    size -= sizeof(struct iphdr);
+    if (ip_hdr_checksum((unsigned short*)icmp, size)!=0) {
         return -1;
+    }
+
+    switch (icmp->type)
+    {
+        case ICMP_ECHO:
+            icmp_echoreply(dev, 1, 1, ntohl(ip->saddr));
+            break;
     }
 
     // printk("v:%x hl:%x l:%x id:%x ttl:%x p:%x c:%x, sip:%x dip:%x\n", ip->version, ip->ihl, ip->tot_len, ip->id, ip->ttl, ip->protocol, ip->check, ip->saddr, ip->daddr);
@@ -66,6 +75,20 @@ int icmp_echo(struct net_device *dev, unsigned short id, unsigned short sequence
 {
 	struct icmphdr *icmp=kzmalloc(sizeof(struct icmphdr));
     icmp->type=ICMP_ECHO;
+    icmp->code=0;
+    icmp->un.echo.id=htons(id);
+    icmp->un.echo.sequence=htons(sequence);
+    icmp->checksum=htons(ip_hdr_checksum((unsigned short*)icmp, sizeof(struct icmphdr)));
+
+    ip_send(IP_P_ICMP, sequence, dest_ip, dev->ip, dev, (unsigned char*)icmp, sizeof(struct icmphdr));
+    kfree(icmp, sizeof(struct icmphdr));
+	return 0;
+}
+
+int icmp_echoreply(struct net_device *dev, unsigned short id, unsigned short sequence, unsigned int dest_ip)
+{
+    struct icmphdr *icmp=kzmalloc(sizeof(struct icmphdr));
+    icmp->type=ICMP_ECHOREPLY;
     icmp->code=0;
     icmp->un.echo.id=htons(id);
     icmp->un.echo.sequence=htons(sequence);
