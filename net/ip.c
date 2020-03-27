@@ -30,8 +30,8 @@ int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_
     }
 
     struct iphdr *ip=(struct iphdr *)((unsigned int)buffer+sizeof(struct ethhdr));
-    ip->daddr=dest_ip;
-    ip->saddr=src_ip;
+    ip->daddr=htonl(dest_ip);
+    ip->saddr=htonl(src_ip);
     ip->protocol=type;
     ip->version=4;
     ip->ihl=sizeof(struct iphdr)/4;

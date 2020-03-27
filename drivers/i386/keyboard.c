@@ -588,6 +588,9 @@ void keyboard_read(TTY *tty)
 
 static void handle_tty(TTY* tty, int content)
 {
+	if ((content & FLAG_ALT_L)) {
+		return clear_screen(tty);
+	}
 	if (!(content & FLAG_EXT) || content==ENTER || content==BACKSPACE) {
         char key = '\0';
         switch (content)
@@ -617,9 +620,6 @@ static void handle_tty(TTY* tty, int content)
         }
 		return;
     }
-	if ((content & FLAG_ALT_L)) {
-		clear_screen(tty);
-	}
 }
 
 

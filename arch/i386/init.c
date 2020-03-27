@@ -192,9 +192,9 @@ void sendNet()
     int a=0;
     while(a==0) {
         unsigned char *mac=arp_find(&am79c793, inet_aton("10.0.2.15"));
-        int a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
+        a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
     }
-    icmp_echo(&am79c793, 1, 1, "10.0.2.15");
+    icmp_echo(&am79c793, 1, 1, inet_aton("10.0.2.15"));
     // icmp_echo(&am79c793, 1, 2, 0x0a000202);
     // arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(0x0a000202), &am79c793, htonl(0x0a00020f), 0, 0, 0);
     while(1){}

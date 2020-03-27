@@ -60,6 +60,8 @@ int icmp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
         return -1;
     }
 
+    printk("code:%x id:%x s:%x\n", icmp->code, icmp->un.echo.id, icmp->un.echo.sequence);
+
     switch (icmp->type)
     {
         case ICMP_ECHO:

@@ -12,7 +12,7 @@
 #include <net/net.h>
 
 int rx_buffer_count = 32;              // total number of receive buffers
-int tx_buffer_count = 8;               // total number of transmit buffers
+int tx_buffer_count = 16;               // total number of transmit buffers
 unsigned int buffer_size = 1544;
 
 static void __attribute__((interrupt)) am79c_interrupt_handle(struct interrupt_frame *frame);
@@ -82,7 +82,7 @@ int init(struct net_device *dev)
     // initBlock->reserved1 = 0;
     TO_AMDATA(dev->custom_data)->init_block.rlen = 5<<4; //2^5=rx_buffer_count
     // initBlock->reserved2 = 0;
-    TO_AMDATA(dev->custom_data)->init_block.tlen = 3<<4; //2^3=tx_buffer_count
+    TO_AMDATA(dev->custom_data)->init_block.tlen = 4<<4; //2^4=tx_buffer_count
     // initBlock->mac_low = mac3 << 24 | mac2 << 16 | mac1 << 8 | mac0;
     // initBlock->mac_high = mac5 << 8 | mac4;
     TO_AMDATA(dev->custom_data)->init_block.mac[0] = mac0;
@@ -159,6 +159,7 @@ void receive(struct net_device *dev)
             unsigned char* buffer = (unsigned char*)(__va(TO_AMDATA(dev->custom_data)->recvBufferDescr[TO_AMDATA(dev->custom_data)->current_rx_buffer].address));
 
             // for(int i = 14+20; i < (size>64?64:size); i++)
+            printk("recv: ");
             for(int i = 0; i < size; i++)
             {
                 printk("%02x ", buffer[i]);
@@ -202,6 +203,7 @@ int send(struct net_device *dev, unsigned char* packet, int size)
         
     // printk("SEND: %d %x\n",current_tx_buffer,sendBufferDescr[current_tx_buffer].flags);
     // for(int i = 14+20; i < (size>64?64:size); i++)
+    printk("send: ");
     for(int i = 0; i < (size); i++)
     {
         printk("%02x ", packet[i]);
@@ -276,7 +278,7 @@ static void __attribute__ ((interrupt)) am79c_interrupt_handle(struct interrupt_
     }
     if((temp & 0x0800) == 0x0800) printk("AMD am79c973 MEMORY ERROR\n");
     if((temp & 0x0400) == 0x0400) receive(&am79c793);
-    if((temp & 0x0200) == 0x0200) printk("AMD am79c973 SENT\n");
+    // if((temp & 0x0200) == 0x0200) printk("AMD am79c973 SENT\n");
                                
     // acknoledge
     outw(0, am79c793.io_base + AM79C79C_ADD_PORT);
