@@ -12,6 +12,7 @@
 #define module_init(x)  __initcall(x);
 
 #define __initcall(fn) device_initcall(fn)
+#define core_initcall(fn)   __define_initcall(fn, 1)
 #define device_initcall(fn) __define_initcall(fn, 6)
 
 #define __define_initcall(fn, id) \

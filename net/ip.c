@@ -14,13 +14,24 @@ int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_
         return -1;
     }
 
-    unsigned char *dest_hw=arp_find(dev, dest_ip);
-    unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
-    int a=dest_hw[0]+dest_hw[1]+dest_hw[2]+dest_hw[3]+dest_hw[4]+dest_hw[5];
-    if (a==0) {
-        printk("unkown ip: %x\n", dest_ip);
-        return -1;
+    unsigned char *dest_hw = 0;
+    if (!dest_ip)
+    { //broadcast
+        dest_ip = 0xFFFFFFFF;
+        unsigned char boardcast[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+        dest_hw = boardcast;
     }
+    else
+    {
+        dest_hw=arp_find(dev, dest_ip);
+        // unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
+        // int a=dest_hw[0]+dest_hw[1]+dest_hw[2]+dest_hw[3]+dest_hw[4]+dest_hw[5];
+        if (dest_hw==0) {
+            printk("unkown ip: %x\n", dest_ip);
+            return -1;
+        }
+    }
+    
     
     unsigned int buffer_size = sizeof(struct ethhdr) + sizeof(struct iphdr) + size;
     unsigned char *buffer=kzmalloc(buffer_size);
@@ -58,10 +69,17 @@ int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
         return -1;
     }
 
+    printk("recv: ");
+    for(int i = 0; i < size; i++)
+    {
+        printk("%02x ", packet[i]);
+    }
+    printk("\n");
+
     switch (ip->protocol)
     {
         case IP_P_ICMP:
-            return icmp_rcv(ip, size, dev);
+            return icmp_rcv((unsigned char*)ip, size, dev);
         case IP_P_TCP:
             break;
         case IP_P_UDP:

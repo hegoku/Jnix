@@ -4,6 +4,7 @@
 #include <system/init.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/8295A.h>
+#include <sys/types.h>
 
 static	struct kb_inbuf	kb_in;
 static	int		code_with_E0;
@@ -254,9 +255,28 @@ WWW Favorites	E0, 66		E0, E6
  * 
  * @param irq The IRQ corresponding to the keyboard, unused here.
  *****************************************************************************/
-static void __attribute__((interrupt)) keyboard_handler(struct interrupt_frame *frame)
+// static void __attribute__((interrupt)) keyboard_handler(struct interrupt_frame *frame)
+// {
+//     disable_8259A_irq(KEYBOARD_IRQ);
+//     // DispStr("@");
+//     unsigned char scan_code = inb(KB_DATA);
+// 	// printk("%x ", scan_code);
+
+// 	if (kb_in.count < KB_IN_BYTES) {
+// 		*(kb_in.p_head) = scan_code;
+// 		kb_in.p_head++;
+// 		if (kb_in.p_head == kb_in.buf + KB_IN_BYTES)
+// 			kb_in.p_head = kb_in.buf;
+// 		kb_in.count++;
+// 	}
+
+// 	keyboard_read(&tty_table[0]);
+//     enable_8259A_irq(KEYBOARD_IRQ);
+// 	// key_pressed = 1;
+// }
+static void keyboard_handler(int irq, void *deiv_id)
 {
-    disable_8259A_irq(KEYBOARD_IRQ);
+    // disable_8259A_irq(KEYBOARD_IRQ);
     // DispStr("@");
     unsigned char scan_code = inb(KB_DATA);
 	// printk("%x ", scan_code);
@@ -270,7 +290,7 @@ static void __attribute__((interrupt)) keyboard_handler(struct interrupt_frame *
 	}
 
 	keyboard_read(&tty_table[0]);
-    enable_8259A_irq(KEYBOARD_IRQ);
+    // enable_8259A_irq(KEYBOARD_IRQ);
 	// key_pressed = 1;
 }
 
@@ -298,7 +318,7 @@ int keyboard_init()
 	column		= 0;
 
 	set_leds();
-    register_interrupt(INT_VECTOR_IRQ0+KEYBOARD_IRQ, keyboard_handler, 0);
+    register_irq(KEYBOARD_IRQ, keyboard_handler, NULL);
     enable_8259A_irq(KEYBOARD_IRQ);
 	return 0;
 }
@@ -437,8 +457,9 @@ void keyboard_read(TTY *tty)
 			if (caps)
 				column = 1;
 
-			if (code_with_E0)
+			if (code_with_E0) {
 				column = 2;
+            }
 
 			key = keyrow[column];
 
@@ -588,10 +609,16 @@ void keyboard_read(TTY *tty)
 
 static void handle_tty(TTY* tty, int content)
 {
-	if ((content & FLAG_ALT_L)) {
+	if ((content & FLAG_CTRL_L) && ((content & 0xFF)=='l')) {
 		return clear_screen(tty);
 	}
-	if (!(content & FLAG_EXT) || content==ENTER || content==BACKSPACE) {
+    if (content==PAGEDOWN) {
+        return scroll_screen(&(tty->console), SCR_DN);
+    }
+    if (content==PAGEUP) {
+        return scroll_screen(&(tty->console), SCR_UP);
+    }
+    if (!(content & FLAG_EXT) || content==ENTER || content==BACKSPACE) {
         char key = '\0';
         switch (content)
         {

@@ -4,24 +4,7 @@
 #include <system/page.h>
 #include <stdio.h>
 
-irq_handler irq_table[IRQ_NUMBER] = {
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq,
-    spurious_irq
-};
+
 
 void __attribute__ ((interrupt)) devide_error(struct interrupt_frame* frame);
 void __attribute__ ((interrupt)) single_step_exception(struct interrupt_frame* frame);
@@ -56,9 +39,9 @@ IDT_PTR idt_ptr;
 /*----------------------------------------------------------------------*
  初始化 386 中断门
  *======================================================================*/
-void init_idt_desc(GATE* idt, unsigned char vector, unsigned char desc_type, void* handler, unsigned char privilege)
+void init_idt_desc(unsigned char vector, unsigned char desc_type, void* handler, unsigned char privilege)
 {
-	GATE *	p_gate	= &idt[vector];
+	GATE *	p_gate	= &idt_ptr.base[vector];
     unsigned int base = (unsigned int)handler;
     p_gate->offset_low	= base & 0xFFFF;
 	p_gate->selector	= 0x8;
@@ -67,21 +50,13 @@ void init_idt_desc(GATE* idt, unsigned char vector, unsigned char desc_type, voi
 	p_gate->offset_high	= (base >> 16) & 0xFFFF;
 }
 
-void spurious_irq(int irq)
-{
-    printk("spurious_irq: %d\n", irq);
-    // DispStr("spurious_irq: ");
-    // disp_int(irq);
-    // DispStr("\n");
-}
-
 void register_interrupt(unsigned char vector, void* handler, void *dev_id)
 {
     __register_interrupt(vector, handler, dev_id);
-    init_idt_desc(idt_ptr.base, vector, DA_386IGate, handler, PRIVILEGE_KRNL);
+    init_idt_desc(vector, DA_386IGate, handler, PRIVILEGE_KRNL);
 }
 
-void init_ldt()
+void init_idt()
 {
     idt_ptr.base = (GATE *)__va(get_free_page());
     get_free_page();
@@ -90,27 +65,27 @@ void init_ldt()
     idt_ptr.limit = 256 * sizeof(struct s_gate) -1;
     load_ldt(&idt_ptr);
 
-    init_idt_desc(idt_ptr.base, INT_VECTOR_DIVIDE, DA_386IGate, devide_error, PRIVILEGE_KRNL);
-    init_idt_desc(idt_ptr.base, INT_VECTOR_DEBUG, DA_386IGate, single_step_exception, PRIVILEGE_KRNL);
-    init_idt_desc(idt_ptr.base, INT_VECTOR_NMI, DA_386IGate, nmi, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_BREAKPOINT, DA_386IGate, breakpoint_exception, PRIVILEGE_USER);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_OVERFLOW,	DA_386IGate, overflow, PRIVILEGE_USER);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_BOUNDS, DA_386IGate, bounds_check, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_INVAL_OP,	DA_386IGate, inval_opcode, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_COPROC_NOT, DA_386IGate, copr_not_available, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_DOUBLE_FAULT,	DA_386IGate, double_fault, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_COPROC_SEG, DA_386IGate, copr_seg_overrun, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_INVAL_TSS, DA_386IGate, inval_tss, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_SEG_NOT, DA_386IGate, segment_not_present, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_STACK_FAULT, DA_386IGate, stack_exception, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_PROTECTION, DA_386IGate, general_protection, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_PAGE_FAULT, DA_386IGate, page_fault, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_COPROC_ERR, DA_386IGate, copr_error, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_AC_ERR, DA_386IGate, ac_error, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_MC_ERR, DA_386IGate, mc_error, PRIVILEGE_KRNL);
-	init_idt_desc(idt_ptr.base, INT_VECTOR_XF_ERR, DA_386IGate, xf_error, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_DIVIDE, DA_386IGate, devide_error, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_DEBUG, DA_386IGate, single_step_exception, PRIVILEGE_KRNL);
+    init_idt_desc(INT_VECTOR_NMI, DA_386IGate, nmi, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_BREAKPOINT, DA_386IGate, breakpoint_exception, PRIVILEGE_USER);
+	init_idt_desc(INT_VECTOR_OVERFLOW,	DA_386IGate, overflow, PRIVILEGE_USER);
+	init_idt_desc(INT_VECTOR_BOUNDS, DA_386IGate, bounds_check, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_INVAL_OP,	DA_386IGate, inval_opcode, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_COPROC_NOT, DA_386IGate, copr_not_available, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_DOUBLE_FAULT,	DA_386IGate, double_fault, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_COPROC_SEG, DA_386IGate, copr_seg_overrun, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_INVAL_TSS, DA_386IGate, inval_tss, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_SEG_NOT, DA_386IGate, segment_not_present, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_STACK_FAULT, DA_386IGate, stack_exception, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_PROTECTION, DA_386IGate, general_protection, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_PAGE_FAULT, DA_386IGate, page_fault, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_COPROC_ERR, DA_386IGate, copr_error, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_AC_ERR, DA_386IGate, ac_error, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_MC_ERR, DA_386IGate, mc_error, PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_XF_ERR, DA_386IGate, xf_error, PRIVILEGE_KRNL);
 
-	init_idt_desc(idt_ptr.base, INT_VECTOR_SYS_CALL, DA_386IGate, sys_call, PRIVILEGE_USER);
+	init_idt_desc(INT_VECTOR_SYS_CALL, DA_386IGate, sys_call, PRIVILEGE_USER);
 
     // register_interrupt(0, devide_error);
 }
@@ -159,6 +134,12 @@ void __attribute__ ((interrupt)) general_protection(struct interrupt_frame* fram
     exception_handler(INT_VECTOR_PROTECTION, error_code, frame->eip, frame->cs, frame->eflags);
 }
 void __attribute__ ((interrupt)) page_fault(struct interrupt_frame* frame, uword_t error_code){
+    unsigned int page = 0;
+    __asm__ __volatile__("movl %%cr2,%0"
+                         : "=r" (page)
+                         :
+                         : "ax");
+    printk("error_page: 0x%x  ", page);
     exception_handler(INT_VECTOR_PAGE_FAULT, error_code, frame->eip, frame->cs, frame->eflags);
 }
 void __attribute__ ((interrupt)) copr_error(struct interrupt_frame* frame){

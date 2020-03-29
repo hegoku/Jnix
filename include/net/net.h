@@ -1,10 +1,6 @@
 #ifndef _NET_NET_H
 #define _NET_NET_H
 
-struct sk_buffer {
-    unsigned char *data;
-    unsigned int len;
-};
 // static inline unsigned short swap_uint16(unsigned short val) {
 //     return (val << 8) | (val >> 8);
 // }

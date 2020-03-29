@@ -2,6 +2,7 @@
 #include <arch/i386/page.h>
 #include <system/page.h>
 #include <arch/i386/desc.h>
+#include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/8295A.h>
 #include <arch/i386/pci.h>
@@ -15,11 +16,19 @@
 #include <string.h>
 #include <system/mm.h>
 #include <arch/i386/timer.h>
+#include <system/thread.h>
 #include <net/netdevice.h>
 #include <system/init.h>
 #include <net/net.h>
 #include <net/icmp.h>
 #include <net/ip.h>
+
+TSS tss={
+    // .esp0 = TOP_OF_KERNEL_STACK,
+	.ss0 = GDT_SEL_KERNEL_DATA
+};
+int is_in_ring0=1;
+struct thread *current_thread=(void*)1;
 
 void sendNet();
 
@@ -119,9 +128,41 @@ static void reset_paging(int mem_size)
     }
 
     //开启分页后，原来的gdtr的base要加上PAGE_OFFSET
+    // struct s_gdtr gdt_ptr;
+    // __asm__ __volatile__("sgdt %0": "=m"(gdt_ptr)::);
+    // gdt_ptr.base = (void*)__va(gdt_ptr.base);
+    // __asm__ __volatile__("lgdt %0" ::"m"(gdt_ptr):);
+}
+
+static void reset_gdt()
+{
     struct s_gdtr gdt_ptr;
-    __asm__ __volatile__("sgdt %0": "=m"(gdt_ptr)::);
-    gdt_ptr.base = (void*)__va(gdt_ptr.base);
+    gdt_ptr.base = (void *)__va(GDT_ADDR);
+    gdt_ptr.limit = GDT_SIZE * sizeof(DESCRIPTOR) - 1;
+
+    DESCRIPTOR *gdt = (DESCRIPTOR *)gdt_ptr.base;
+
+    DESCRIPTOR gdt_0 = create_descriptor(0, 0, 0);
+	insert_descriptor(gdt, 0, gdt_0, PRIVILEGE_KRNL);
+
+	DESCRIPTOR kernel_cs = create_descriptor(0, 0xfffff, DA_CR | DA_32 | DA_LIMIT_4K | DA_DPL0);
+    insert_descriptor(gdt, 1, kernel_cs, PRIVILEGE_KRNL);
+
+    DESCRIPTOR kernel_ds = create_descriptor(0, 0xfffff, DA_DRW | DA_32 | DA_LIMIT_4K | DA_DPL0);
+	insert_descriptor(gdt, 2, kernel_ds, PRIVILEGE_KRNL);
+
+	DESCRIPTOR video = create_descriptor(0xB8000, 0xBFFFF, DA_DRW | DA_32 | DA_DPL3);
+	insert_descriptor(gdt, 3, video, PRIVILEGE_USER);
+
+	DESCRIPTOR user_cs = create_descriptor(0, 0xfffff, DA_CR | DA_32 | DA_LIMIT_4K | DA_DPL3);
+	insert_descriptor(gdt, 4, user_cs, PRIVILEGE_USER);
+
+	DESCRIPTOR user_ds = create_descriptor(0, 0xfffff, DA_DRW | DA_32 | DA_LIMIT_4K | DA_DPL3);
+	insert_descriptor(gdt, 5, user_ds, PRIVILEGE_USER);
+
+    DESCRIPTOR tss_desc = create_descriptor((unsigned int)&tss, sizeof(TSS) - 1, DA_386TSS);
+    insert_descriptor(gdt, 6, tss_desc, PRIVILEGE_KRNL);
+
     __asm__ __volatile__("lgdt %0" ::"m"(gdt_ptr):);
 }
 
@@ -171,7 +212,8 @@ void init_arch()
     init_tty();
     int mem_size = load_memory_size();
     reset_paging(mem_size);
-    init_ldt();
+    reset_gdt();
+    init_idt();
     init_8259A();
     pci_select_drivers();
     pcibios_irq_init();
@@ -190,11 +232,18 @@ void sendNet()
     // unsigned char *mac=0;
     // unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
     int a=0;
-    while(a==0) {
-        unsigned char *mac=arp_find(&am79c793, inet_aton("10.0.2.15"));
-        a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
+    unsigned char *mac = 0;
+    while (mac == 0)
+    {
+        mac=arp_find(&am79c793, inet_aton("10.0.2.4"));
+        if (mac==0) {
+            arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(inet_aton("10.0.2.4")), &am79c793, htonl(am79c793.ip), 0, 0, 0);
+        }
+        // a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
     }
-    icmp_echo(&am79c793, 1, 1, inet_aton("10.0.2.15"));
+    // icmp_echo(&am79c793, 1, 1, inet_aton("10.0.2.4"));
+    // icmp_timestamp(&am79c793, 1, 1, inet_aton("10.0.2.4"), 0);
+    icmp_hostano(&am79c793, 0);
     // icmp_echo(&am79c793, 1, 2, 0x0a000202);
     // arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(0x0a000202), &am79c793, htonl(0x0a00020f), 0, 0, 0);
     while(1){}

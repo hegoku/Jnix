@@ -27,13 +27,10 @@
 
 #define	INT_VECTOR_SYS_CALL		0x80
 
-#define IRQ_NUMBER 16
 
 #define load_ldt(ldtptr) \
     asm volatile("lidt %0"::"m" (*ldtptr))
     // asm volatile("lidt %0": :"r" (ldtptr))
-
-typedef void (*irq_handler)(int irq);
 
 typedef unsigned int uword_t __attribute__ ((mode (__word__)));
 struct interrupt_frame
@@ -63,19 +60,10 @@ void general_protection();
 void page_fault();
 void copr_error();
 
-extern void hwint00();
-extern void hwint01();
-extern void hwint02();
-extern void hwint06();
-extern void hwint14();
 extern void sys_call();
 
-extern void enable_irq();
-extern void disable_irq();
-
-void spurious_irq(int irq);
-
-void init_ldt();
+void init_idt();
 void register_interrupt(unsigned char vector, void *handler, void *dev_id);
+void init_idt_desc(unsigned char vector, unsigned char desc_type, void *handler, unsigned char privilege);
 
 #endif

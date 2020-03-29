@@ -4,6 +4,7 @@ ASM			= nasm
 CC          = i386-elf-gcc
 LD			= i386-elf-ld
 OBJCOPY     = i386-elf-objcopy
+OBJDUMP     = i386-elf-objdump
 CFLAGS      = -c -fno-builtin -I include/
 
 SUBDIR=lib mm arch/i386 net drivers/i386
@@ -15,12 +16,15 @@ OBJSUBDIR = $(SUBDIR:%=build/%.o)
 
 OBJS        =  build/kernel_asm.o build/kernel_c.o build/tty.o build/interrupt.o
 
-all : clean everything buildimg
+all : clean everything buildimg debug
 
 everything : init.bin kernel.bin 
 
 clean :
 	rm -Rf build/*
+
+debug:
+	$(OBJDUMP) -j .text -l -d -r build/kernel.elf >build/kernel.elf.txt
 
 buildimg:
 	cat build/init.bin build/kernel.bin > build/init
@@ -52,6 +56,9 @@ build/interrupt.o : kernel/interrupt.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 build/tty.o : kernel/tty.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+build/spinlock.o : kernel/spinlock.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 #arch

@@ -8,6 +8,7 @@ struct net_device {
 
     unsigned char dev_addr[6];
     unsigned int ip;
+    unsigned int mask;
 
     int irq;
 

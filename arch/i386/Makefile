@@ -1,5 +1,5 @@
 ASM			= nasm
-CC          = i386-elf-gcc
+CC          = i386-elf-gcc -g
 LD			= i386-elf-ld
 OBJCOPY     = i386-elf-objcopy
 CFLAGS      = -c -fno-builtin -mgeneral-regs-only -I ../../include/
@@ -7,9 +7,12 @@ CFLAGS      = -c -fno-builtin -mgeneral-regs-only -I ../../include/
 OBJS        = ../../build/8259A.o ../../build/idt.o ../../build/init.o ../../build/desc.o ../../build/pci.o ../../build/bios.o ../../build/timer.o \
 			  ../../build/vga.o 
 
-all : everything
+all : everything debug
 
 everything : arch/i386.o
+
+debug:
+	$(OBJDUMP) -j .text -l -d -r ../build/arch/i386.o >../build/arch_i386.o.txt
 
 # %.o : %.c
 # 	$(CC) $(CFLAGS) -o ../build/$@ $<

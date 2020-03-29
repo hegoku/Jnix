@@ -10,12 +10,14 @@
 #include <net/netdevice.h>
 #include <system/init.h>
 #include <net/net.h>
+#include <net/skbuffer.h>
 
 int rx_buffer_count = 32;              // total number of receive buffers
 int tx_buffer_count = 16;               // total number of transmit buffers
 unsigned int buffer_size = 1544;
 
-static void __attribute__((interrupt)) am79c_interrupt_handle(struct interrupt_frame *frame);
+// static void __attribute__((interrupt)) am79c_interrupt_handle(struct interrupt_frame *frame);
+static void am79c_interrupt_handle(int irq, struct net_device *dev);
 void receive(struct net_device *dev);
 
 int am79c793_probe(struct net_device *dev)
@@ -48,7 +50,7 @@ int init(struct net_device *dev)
     if (am79c793_probe(dev)==-1) {
         return -1;
     }
-    register_interrupt(INT_VECTOR_IRQ0 + dev->irq, am79c_interrupt_handle, dev);
+    register_irq(dev->irq, am79c_interrupt_handle, dev);
     enable_8259A_irq(dev->irq);
 
     // //reset
@@ -154,18 +156,34 @@ void receive(struct net_device *dev)
         
         {
             unsigned int size = TO_AMDATA(dev->custom_data)->recvBufferDescr[TO_AMDATA(dev->custom_data)->current_rx_buffer].flags2 & 0xFFF;
+            size -= 4; //去掉最后4字节的CRC校验码
             // if(size > 64) // remove checksum
             //     size -= 4;
             unsigned char* buffer = (unsigned char*)(__va(TO_AMDATA(dev->custom_data)->recvBufferDescr[TO_AMDATA(dev->custom_data)->current_rx_buffer].address));
+            struct sk_buffer *skb = skb_create(dev);
+            skb->len = size;
+            skb->data = kzmalloc(size);
+            memcpy(skb->data, buffer, size);
 
             // for(int i = 14+20; i < (size>64?64:size); i++)
-            printk("recv: ");
-            for(int i = 0; i < size; i++)
-            {
-                printk("%02x ", buffer[i]);
-            }
-            printk("\n");
-            reveice_callback(buffer, size-4, dev); //去掉最后4字节的CRC校验码
+            // printk("recv: ");
+            // for(int i = 0; i < size; i++)
+            // {
+            //     printk("%02x ", buffer[i]);
+            // }
+            // printk("\n");
+            skb_recv_push(skb);
+            // skb = skb_recv_shift();
+            // while(skb!=0) {
+            //     for(int i = 0; i < skb->len; i++)
+            //     {
+            //         printk("%02x ", skb->data[i]);
+            //     }
+            //     skb_free(skb);
+            //     skb = skb_recv_shift();
+            //     printk("\n");
+            // }
+            // reveice_callback(buffer, size, dev);
             // if(handler != 0)
             //     if(handler->OnRawDataReceived(buffer, size))
             //         Send(buffer, size);
@@ -186,7 +204,7 @@ int send(struct net_device *dev, unsigned char* packet, int size)
     // int sendDescriptor = currentSendBuffer;
     // currentSendBuffer = (currentSendBuffer + 1) % 8;
     if ((TO_AMDATA(dev->custom_data)->sendBufferDescr[TO_AMDATA(dev->custom_data)->current_tx_buffer].flags & 0x80000000)!=0) {
-        printk("tx_drop %d %x\n",TO_AMDATA(dev->custom_data)->current_tx_buffer,TO_AMDATA(dev->custom_data)->sendBufferDescr[TO_AMDATA(dev->custom_data)->current_tx_buffer].flags);
+        // printk("tx_drop %d %x\n",TO_AMDATA(dev->custom_data)->current_tx_buffer,TO_AMDATA(dev->custom_data)->sendBufferDescr[TO_AMDATA(dev->custom_data)->current_tx_buffer].flags);
         dev->tx_dropped++;
         return -1;
     }
@@ -258,34 +276,35 @@ struct net_device am79c793 = {
     send:send
 };
 
-static void __attribute__ ((interrupt)) am79c_interrupt_handle(struct interrupt_frame *frame)
+// static void __attribute__ ((interrupt)) am79c_interrupt_handle(struct interrupt_frame *frame)
+static void am79c_interrupt_handle(int irq, struct net_device *dev)
 {
-    disable_8259A_irq(am79c793.irq);
+    // disable_8259A_irq(am79c793.irq);
     // eoi_8259A();
     // printk("a\n");
-    outw(0, am79c793.io_base + AM79C79C_ADD_PORT);
-    unsigned int temp = inw(am79c793.io_base + AM79C79C_DATA_PORT);
+    outw(0, dev->io_base + AM79C79C_ADD_PORT);
+    unsigned int temp = inw(dev->io_base + AM79C79C_DATA_PORT);
 
     if((temp & 0x8000) == 0x8000) printk("AMD am79c973 ERROR\n");
     if((temp & 0x2000) == 0x2000) printk("AMD am79c973 COLLISION ERROR\n");
     if((temp & 0x4000) == 0x4000) {
-        am79c793.tx_dropped++;
+        dev->tx_dropped++;
         printk("AMD am79c973 tx_error\n");
     }
     if((temp & 0x1000) == 0x1000) {
-        am79c793.rx_dropped++;
+        dev->rx_dropped++;
         printk("AMD am79c973 MISSED FRAME\n");
     }
     if((temp & 0x0800) == 0x0800) printk("AMD am79c973 MEMORY ERROR\n");
-    if((temp & 0x0400) == 0x0400) receive(&am79c793);
+    if((temp & 0x0400) == 0x0400) receive(dev);
     // if((temp & 0x0200) == 0x0200) printk("AMD am79c973 SENT\n");
                                
     // acknoledge
-    outw(0, am79c793.io_base + AM79C79C_ADD_PORT);
-    outw(temp, am79c793.io_base + AM79C79C_DATA_PORT);
+    outw(0, dev->io_base + AM79C79C_ADD_PORT);
+    outw(temp, dev->io_base + AM79C79C_DATA_PORT);
     
     if((temp & 0x0100) == 0x0100) printk("AMD am79c973 INIT DONE\n");
-    enable_8259A_irq(am79c793.irq);
+    // enable_8259A_irq(am79c793.irq);
 }
 
 static int am79c793_init()

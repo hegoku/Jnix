@@ -1,13 +1,32 @@
-global DispStr
-global in_byte
-global out_byte
-
 global _start
+global save
+global	hwint00
+global	hwint01
+global	hwint02
+global	hwint03
+global	hwint04
+global	hwint05
+global	hwint06
+global	hwint07
+global	hwint08
+global	hwint09
+global	hwint10
+global	hwint11
+global	hwint12
+global	hwint13
+global	hwint14
+global	hwint15
 
 extern main
+extern tss
+extern is_in_ring0
+extern current_thread
+extern irq_table
 
 PAGE_OFFSET equ 0xC0000000
 STACKTOP equ 0x7e00
+
+%include "kernel/include/pm.inc"
 
 [SECTION .data]
 disp_pos dd	0
@@ -19,22 +38,6 @@ _start:
     mov esp, STACKTOP+PAGE_OFFSET
     call main
     jmp $
-
-in_byte:
-    mov edx, [esp+4]
-    xor eax, eax
-    in al, dx
-    nop
-    nop
-    ret
-
-out_byte:
-    mov edx, [esp+4]
-    mov al, [esp+4+4]
-    out dx, al
-    nop
-    nop
-    ret
 
 DispStr:
     push	ebp
@@ -98,3 +101,142 @@ DispStr:
 
 	pop	ebp
 	ret
+
+save:
+    pushad
+    push ds
+    push es
+    push fs
+    push gs
+
+    mov esi,ss
+    mov ds, esi
+    mov es,esi
+
+    mov esi, esp ;进程表起始地址
+
+    inc dword[is_in_ring0]
+    cmp dword[is_in_ring0], 0
+    jne .1
+    mov esp, [current_thread]
+    mov esp, [esp+P_K_ESP]
+    push restart
+    jmp [esi+RETADR-P_STACKBASE]
+.1:
+    push ret_to_proc
+    jmp [esi+RETADR-P_STACKBASE]
+
+restart:
+    mov	esp, [current_thread]
+    mov eax, [esp+P_K_ESP_ADDR]
+    add eax, 1024*4
+    mov dword[esp+P_K_ESP], eax ;重新设置进程内核态栈顶, 否则switch_to要堆栈溢出
+	lldt [esp + P_LDT_SEL]
+	lea	eax, [esp + P_STACKTOP]
+	mov	dword [tss + TSS3_S_SP0], eax
+ret_to_proc:
+    dec dword[is_in_ring0]
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    popad
+    add esp,4
+    iretd
+
+%macro	hwint_master 1
+    call save
+
+    in al, INT_M_CTLMASK ;屏蔽当前中断
+    or al, (1<<%1)
+    out INT_M_CTLMASK, al
+
+    push dword[(irq_table+4*3*%1)+4*2] ;struct interrupt.dev_id
+    push %1
+	call [(irq_table+4*3*%1)+4] ;struct interrupt.handler
+	add	esp, 4*2
+
+    in al, INT_M_CTLMASK ;恢复当前中断
+    and al, ~(1<<%1)
+    out INT_M_CTLMASK, al
+
+	ret
+%endmacro
+
+%macro	hwint_slave	1
+	call save
+
+    in al, INT_S_CTLMASK ;屏蔽当前中断
+    or al, (1<<(%1-8))
+    out INT_S_CTLMASK, al
+
+    push dword[irq_table+4*3*%1+4*2] ;struct interrupt.dev_id
+    push %1
+	call [irq_table+4*3*%1+4] ;struct interrupt.handler
+	add	esp, 4*2
+
+    in al, INT_S_CTLMASK ;恢复当前中断
+    and al, ~(1<<(%1-8))
+    out INT_S_CTLMASK, al
+
+	ret
+%endmacro
+
+hwint00:		; Interrupt routine for irq 1 (keyboard)
+	hwint_master 0
+hwint01:		; Interrupt routine for irq 1 (keyboard)
+	hwint_master 1
+
+; ALIGN	16
+hwint02:		; Interrupt routine for irq 2 (cascade!)
+   hwint_master 2
+
+; ALIGN	16
+hwint03:		; Interrupt routine for irq 3 (second serial)
+	hwint_master 3
+
+; ALIGN	16
+hwint04:		; Interrupt routine for irq 4 (first serial)
+	hwint_master 4
+
+; ALIGN	16
+hwint05:		; Interrupt routine for irq 5 (XT winchester)
+	hwint_master 5
+
+; ALIGN	16
+hwint06:		; Interrupt routine for irq 6 (floppy)
+	hwint_master 6
+
+; ALIGN	16
+hwint07:		; Interrupt routine for irq 7 (printer)
+	hwint_master 7
+hwint08:		; Interrupt routine for irq 8 (realtime clock).
+	hwint_slave	8
+
+; ALIGN	16
+hwint09:		; Interrupt routine for irq 9 (irq 2 redirected)
+	hwint_slave	9
+
+; ALIGN	16
+hwint10:		; Interrupt routine for irq 10
+	hwint_slave	10
+
+; ALIGN	16
+hwint11:		; Interrupt routine for irq 11
+	hwint_slave	11
+
+; ALIGN	16
+hwint12:		; Interrupt routine for irq 12
+	hwint_slave	12
+
+; ALIGN	16
+hwint13:		; Interrupt routine for irq 13 (FPU exception)
+	hwint_slave	13
+
+; ALIGN	16
+hwint14:		; Interrupt routine for irq 14 (AT winchester)
+	hwint_slave	14
+
+; ALIGN	16
+hwint15:		; Interrupt routine for irq 15
+	hwint_slave	15

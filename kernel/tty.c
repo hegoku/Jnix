@@ -1,8 +1,7 @@
 #include <system/tty.h>
 #include <system/page.h>
+#include <arch/i386/io.h>
 
-extern void out_byte(unsigned short port, unsigned char value);
-extern unsigned char in_byte(unsigned short port);
 
 #define MAJOR_NR 4
 
@@ -105,30 +104,31 @@ static void flush(CONSOLE *console)
 static void console_set_cursor(unsigned int position)
 {
     asm("cli");
-    out_byte(CRTC_ADDR_REG, CURSOR_H);
-    out_byte(CRTC_DATA_REG, (position >> 8) & 0xFF);
-	out_byte(CRTC_ADDR_REG, CURSOR_L);
-	out_byte(CRTC_DATA_REG, position & 0xFF);
+    outb(CURSOR_H, CRTC_ADDR_REG);
+    outb((position >> 8) & 0xFF, CRTC_DATA_REG);
+	outb(CURSOR_L, CRTC_ADDR_REG);
+	outb(position & 0xFF, CRTC_DATA_REG);
     asm("sti");
 }
 
 static void set_console_start_addr(unsigned int addr)
 {
     asm("cli");
-    out_byte(CRTC_ADDR_REG, START_ADDR_H);
-    out_byte(CRTC_DATA_REG, (addr>>8)&0xff);
-    out_byte(CRTC_ADDR_REG, START_ADDR_L);
-    out_byte(CRTC_DATA_REG, addr&0xff);
+    outb(START_ADDR_H, CRTC_ADDR_REG);
+    outb((addr>>8)&0xff, CRTC_DATA_REG);
+    outb(START_ADDR_L, CRTC_ADDR_REG);
+    outb(addr&0xff, CRTC_DATA_REG);
     asm("sti");
 }
 
 void scroll_screen(CONSOLE* p_con, int direction)
 {
 	if (direction == SCR_UP) {
-		if (p_con->current_start_addr > p_con->original_addr) {
-			p_con->current_start_addr -= SCREEN_WIDTH;
-		}
-	}else if (direction == SCR_DN) {
+        if (p_con->current_start_addr > p_con->original_addr)
+        {
+            p_con->current_start_addr -= SCREEN_WIDTH;
+        }
+    }else if (direction == SCR_DN) {
         if (p_con->current_start_addr + SCREEN_SIZE < p_con->original_addr + p_con->v_mem_limit)
         {
             p_con->current_start_addr += SCREEN_WIDTH;

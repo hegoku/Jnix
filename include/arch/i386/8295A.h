@@ -23,8 +23,13 @@
 
 void init_8259A();
 
+typedef void (*irq_handler)(int irq);
+
 void enable_8259A_irq(int irq);
 void disable_8259A_irq(int irq);
+
+void spurious_irq(int irq, void *dev_id);
+void register_irq(unsigned char irq, void *handler, void *dev_id);
 
 static __inline void eoi_8259A ()
 {
@@ -32,5 +37,22 @@ static __inline void eoi_8259A ()
     __asm__("nop");
     __asm__ __volatile__ ("outb %b0,%w1": :"a" (INT_S_CTL), "Nd" (0x20));
 }
+
+extern void hwint00();
+extern void hwint01();
+extern void hwint02();
+extern void hwint03();
+extern void hwint04();
+extern void hwint05();
+extern void hwint06();
+extern void hwint07();
+extern void hwint08();
+extern void hwint09();
+extern void hwint10();
+extern void hwint11();
+extern void hwint12();
+extern void hwint13();
+extern void hwint14();
+extern void hwint15();
 
 #endif

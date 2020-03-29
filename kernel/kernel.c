@@ -3,8 +3,6 @@
 #include <system/mm.h>
 #include <system/tty.h>
 
-void DispStr(char *msg);
-
 void main()
 {
     init_arch();
@@ -17,6 +15,5 @@ void main()
     a[1] = '0';
     a[2] = '\n';
     printk("%s\n", a);
-    // DispStr(a);
     while(1){}
 }

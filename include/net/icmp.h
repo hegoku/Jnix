@@ -64,10 +64,29 @@ struct icmphdr {
 		unsigned short	mtu;
 	} frag;
 	unsigned char reserved[4];
+    struct {
+        unsigned char len;
+        unsigned char count;
+        unsigned short ttl;
+    } route;
   } un;
-};
+} __attribute__((packed));
+
+struct icmp_timestamp {
+    unsigned int orig;
+    unsigned int recv;
+    unsigned int xmit;
+} __attribute__((packed));
+
+struct icmp_route{
+    unsigned int ip;
+    unsigned int p;
+} __attribute__((packed));
 
 int icmp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev);
 int icmp_echo(struct net_device *dev, unsigned short id, unsigned short sequence, unsigned int dest_ip);
-int icmp_echoreply(struct net_device *dev, unsigned short id, unsigned short sequence, unsigned int dest_ip);
+int icmp_echoreply(struct net_device *dev, unsigned short id, unsigned short sequence, unsigned int dest_ip, unsigned char *data, unsigned int data_size);
+int icmp_address(struct net_device *dev, unsigned short id, unsigned short sequence, unsigned int dest_ip);
+int icmp_timestamp(struct net_device *dev, unsigned short id, unsigned short sequence, unsigned int dest_ip, unsigned int origin);
+int icmp_hostano(struct net_device *dev, unsigned int dest_ip);
 #endif

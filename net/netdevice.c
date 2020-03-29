@@ -3,6 +3,7 @@
 #include <net/arp.h>
 #include <net/ip.h>
 #include <net/net.h>
+#include <net/skbuffer.h>
 #include <stdio.h>
 
 int register_netdev(struct net_device *dev)

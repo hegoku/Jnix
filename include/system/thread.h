@@ -44,6 +44,5 @@ struct thread {
     struct thread *next;
 };
 
-extern struct thread *current_thread;
 
 #endif

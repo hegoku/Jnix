@@ -5,6 +5,8 @@
 #include <system/mm.h>
 #include <string.h>
 #include <stdio.h>
+#include <system/init.h>
+#include <system/spinlock.h>
 
 struct hash_entry {
     unsigned int ip;
@@ -17,6 +19,10 @@ struct hash_map{
     int list_size;
     struct hash_entry *list;
 } * arp_map=0;
+
+static raw_spinlock_t lock = {
+    lock : 1
+};
 
 int hash_code(struct hash_map *map, unsigned int ip) {
     // char *k = (char *)&ip;
@@ -66,9 +72,16 @@ void hash_put(struct hash_map *map, unsigned int ip, unsigned char* mac)
 unsigned char* hash_get(struct hash_map *map, unsigned int ip)
 {
     int index = hash_code(map, ip);
-    struct hash_entry *e = &(map->list[index]);
-    while(e->ip!=0 && ip!=e->ip) {
+    struct hash_entry *e = &map->list[index];
+    if (e==0) {
+        return 0;
+    }
+    while (e->ip != 0 && ip != e->ip)
+    {
         e = e->next;
+    }
+    if (e->ip==0) {
+        return 0;
     }
     return e->mac;
 }
@@ -113,6 +126,14 @@ void hash_clear(struct hash_map *map) {
     memset(arp_map->list, 0, sizeof(struct hash_entry)*10);
     map->list = 0;
     map->size = 0;
+}
+
+static int arp_init()
+{
+    arp_map = (struct hash_map*)kzmalloc(sizeof(struct hash_map));
+    arp_map->list = (struct hash_entry*)kzmalloc(sizeof(struct hash_entry)*10);
+    arp_map->list_size = 10;
+    arp_map->size = 0;
 }
 
 int arp_send(int type, int ptype, unsigned int dest_ip, struct net_device *dev, unsigned int src_ip, const unsigned char *dest_hw, const unsigned char *src_hw, const unsigned char *target_hw)
@@ -174,48 +195,41 @@ int arp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
 
     unsigned int sip;
     memcpy(&sip, arp->ar_sip, sizeof(arp->ar_sip));
-    unsigned int myip = 0x0a00020C;
     if (arp->ar_op == htons(ARPOP_REQUEST))
     {
         unsigned int tip;
         memcpy(&tip, arp->ar_tip, sizeof(arp->ar_tip));
-        if (tip == htonl(myip))
+        if (tip == htonl(dev->ip))
         {
-            arp_send(ARPOP_REPLY, ETH_P_ARP, sip, dev, htonl(myip), arp->ar_sha, dev->dev_addr, arp->ar_sha);
+            arp_send(ARPOP_REPLY, ETH_P_ARP, sip, dev, htonl(dev->ip), arp->ar_sha, dev->dev_addr, arp->ar_sha);
         }
     }
     else if (arp->ar_op == htons(ARPOP_REPLY))
     {
-        if (arp_map==0) {
-            arp_map = (struct hash_map*)kzmalloc(sizeof(struct hash_map));
-            arp_map->list = (struct hash_entry*)kzmalloc(sizeof(struct hash_entry)*10);
-            arp_map->list_size = 10;
-            arp_map->size = 0;
-        }
         hash_put(arp_map, sip, arp->ar_sha);
-        unsigned char *th_m = hash_get(arp_map, sip);
-        printk("mac:%02X %02X %02X %02X %02X %02X , ip:%x\n", th_m[0], th_m[1], th_m[2], th_m[3], th_m[4], th_m[5], sip);
+        // unsigned char *th_m = hash_get(arp_map, sip);
+        // if (th_m!=0) {
+        //     printk("mac:%02X %02X %02X %02X %02X %02X , ip:%x\n", th_m[0], th_m[1], th_m[2], th_m[3], th_m[4], th_m[5], sip);
+        // }
     }
 }
 
 unsigned char *arp_find(struct net_device *dev, unsigned int ip)
 {
-    if (arp_map==0) {
-        arp_map = (struct hash_map*)kzmalloc(sizeof(struct hash_map));
-        arp_map->list = (struct hash_entry*)kzmalloc(sizeof(struct hash_entry)*10);
-        arp_map->list_size = 10;
-        arp_map->size = 0;
-    }
     unsigned char *mac=hash_get(arp_map, htonl(ip));
     unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
-    int a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
-    if (a==0) {
+    return mac;
+    // int a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
+    if (mac==0) {
         arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(ip), dev, htonl(dev->ip), 0, 0, 0);
+        return 0;
         return hash_get(arp_map, ip);
     } else {
         return mac;
     }
 }
+
+module_init(arp_init);
 
 // struct skb *arp_create(int type, int ptype, unsigned int dest_ip, struct net_device *dev, unsigned int src_ip, const unsigned char *dest_hw, const unsigned char *src_hw, const unsigned char *target_hw)
 // {
