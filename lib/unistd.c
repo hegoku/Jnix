@@ -1,11 +1,10 @@
 #include <unistd.h>
-// #include <system/fs.h>
 #include <system/system_call.h>
 
- int sys_call_0_param(int index){};
- int sys_call_1_param(int index, ...){};
- int sys_call_2_param(int index, ...){};
- int sys_call_3_param(int index, ...){};
+extern int sys_call_0_param(int index);
+extern int sys_call_1_param(int index, ...);
+extern int sys_call_2_param(int index, ...);
+extern int sys_call_3_param(int index, ...);
 
 inline void exit(int status)
 {

@@ -1,4 +1,10 @@
 #include <system/thread.h>
+#include <system/page.h>
+#include <arch/i386/io.h>
+#include <arch/i386/page.h>
+
+extern int is_in_ring0;
+extern struct thread *current_thread;
 
 void schedule()
 {
@@ -9,7 +15,7 @@ void schedule()
     }
     // printk("!");
     
-    // disp_int((int)current_process);
+    // disp_int((int)current_thread);
     struct thread *prev = current_thread;
     if (current_thread!=0) {
         return;
@@ -31,12 +37,12 @@ void schedule()
     // do
     // {
     //     current_thread=current_thread->next;
-    // } while (current_process->is_free != 1 || current_process->status != TASK_RUNNING);
+    // } while (current_thread->is_free != 1 || current_thread->status != TASK_RUNNING);
     current_thread=current_thread->next;
     if (prev!=current_thread) {
-        // printk("1:%x %x %d %d\n",current_process->kernel_regs.esp, prev->kernel_regs.esp, current_process->pid, prev->pid);
-        load_cr3(current_thread->page_dir);
-        switch_to(prev, current_thread, prev);
-        // printk("2:%x %x %d %d\n",current_process->kernel_regs.esp, prev->kernel_regs.esp, current_process->pid, prev->pid);
+        // printk("1:%x %x %d %d\n",current_thread->kernel_regs.esp, prev->kernel_regs.esp, current_thread->pid, prev->pid);
+        load_cr3(__pa(current_thread->page_dir));
+        // switch_to(prev, current_thread, prev);
+        // printk("2:%x %x %d %d\n",current_thread->kernel_regs.esp, prev->kernel_regs.esp, current_thread->pid, prev->pid);
     }
 }

@@ -7,14 +7,14 @@ OBJCOPY     = i386-elf-objcopy
 OBJDUMP     = i386-elf-objdump
 CFLAGS      = -c -fno-builtin -I include/
 
-SUBDIR=lib mm arch/i386 net drivers/i386
+SUBDIR=lib mm arch/i386 net drivers/i386 fs
 BUILDSUBDIR = $(SUBDIR:%=build-%)
 CLEANSUBDIR = $(SUBDIR:%=clean-%)
 OBJSUBDIR = $(SUBDIR:%=build/%.o)
 
 .PHONY: all $(SUBDIR) $(BUILDSUBDIR) $(CLEANSUBDIR)
 
-OBJS        =  build/kernel_asm.o build/kernel_c.o build/tty.o build/interrupt.o
+OBJS        =  build/kernel_asm.o build/kernel_c.o build/tty.o build/interrupt.o build/thread.o build/schedule.o build/system_call.o build/list.o
 
 all : clean everything buildimg debug
 
@@ -59,6 +59,18 @@ build/tty.o : kernel/tty.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 build/spinlock.o : kernel/spinlock.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+build/thread.o : kernel/thread.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+build/system_call.o : kernel/system_call.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+build/schedule.o : kernel/schedule.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+build/list.o : kernel/list.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 #arch

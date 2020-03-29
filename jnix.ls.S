@@ -47,6 +47,12 @@ SECTIONS {
         __initcall_end = .;
     }
 
+    .init_process : {
+        __init_process_start = .;
+        * (.init_process)
+        __init_process_end = .;
+    }
+
     .bss : {
         * (.bss)
     }

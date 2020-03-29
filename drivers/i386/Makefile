@@ -4,21 +4,23 @@ LD			= i386-elf-ld
 OBJCOPY     = i386-elf-objcopy
 CFLAGS      = -c -fno-builtin -mgeneral-regs-only -I ../../include/
 
-OBJS        = ../../build/keyboard.o ../../build/am79c793.o
+OBJS        = ../../build/drivers/keyboard.o ../../build/drivers/am79c793.o
 
-all : everything
+all : mkdir everything
 
+mkdir:
+	mkdir -p ../../build/drivers/
+	
 everything : drivers/i386.o
 
 # %.o : %.c
 # 	$(CC) $(CFLAGS) -o ../build/$@ $<
 
-../../build/keyboard.o : keyboard.c
+../../build/drivers/keyboard.o : keyboard.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/am79c793.o : am79c793.c
+../../build/drivers/am79c793.o : am79c793.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 drivers/i386.o: $(OBJS)
-	mkdir -p ../../build/drivers/
 	$(LD) -r -o ../../build/drivers/i386.o $(OBJS)

@@ -344,13 +344,10 @@ EFLAGSREG	equ	CSREG		+ 4
 ESPREG		equ	EFLAGSREG	+ 4
 SSREG		equ	ESPREG		+ 4
 P_STACKTOP	equ	SSREG		+ 4
-P_LDT_SEL	equ	P_STACKTOP
-P_LDT		equ	P_LDT_SEL	+ 4
-P_STATUS    equ P_LDT       + 16
-P_SIGNAL    equ P_STATUS    + 4
-P_K_ESP     equ P_SIGNAL    + 4
+P_K_ESP     equ P_STACKTOP  
 P_K_ESP_ADDR equ P_K_ESP + 4
 P_PID       equ P_K_ESP_ADDR     + 8
+P_STATUS    equ P_PID +4
 
 
 TSS3_S_SP0	equ	4

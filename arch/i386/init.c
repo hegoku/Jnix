@@ -16,7 +16,6 @@
 #include <string.h>
 #include <system/mm.h>
 #include <arch/i386/timer.h>
-#include <system/thread.h>
 #include <net/netdevice.h>
 #include <system/init.h>
 #include <net/net.h>
@@ -27,8 +26,6 @@ TSS tss={
     // .esp0 = TOP_OF_KERNEL_STACK,
 	.ss0 = GDT_SEL_KERNEL_DATA
 };
-int is_in_ring0=1;
-struct thread *current_thread=(void*)1;
 
 void sendNet();
 
@@ -102,10 +99,12 @@ static void reset_paging(int mem_size)
     {
         for (i = 0; i < 1024; i++)
         {
-            pt->entry[i] = a | PG_P | PG_RWW | PG_USS;
+            // pt->entry[i] = a | PG_P | PG_RWW | PG_USS;
+            pt->entry[i] = a | PG_P | PG_RWW | PG_USU;
             a += 4096;
         }
-        pg->entry[j+768] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USS;
+        // pg->entry[j+768] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USS;
+        pg->entry[j+768] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USU;
         pt++;
     }
     load_cr3(PAGE_DIR_BASE);
@@ -164,6 +163,8 @@ static void reset_gdt()
     insert_descriptor(gdt, 6, tss_desc, PRIVILEGE_KRNL);
 
     __asm__ __volatile__("lgdt %0" ::"m"(gdt_ptr):);
+    __asm__ __volatile__("movl %0, %%eax;ltr %%ax"
+                         : :"g"(GDT_SEL_TSS):"%eax");
 }
 
 // void init_ldt()
@@ -220,10 +221,7 @@ void init_arch()
     timer_init();
 
     do_initcalls();
-    sendNet();
-    while (1)
-    {
-    }
+    // sendNet();
 }
 
 void sendNet()
@@ -246,7 +244,10 @@ void sendNet()
     icmp_hostano(&am79c793, 0);
     // icmp_echo(&am79c793, 1, 2, 0x0a000202);
     // arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(0x0a000202), &am79c793, htonl(0x0a00020f), 0, 0, 0);
-    while(1){}
+    return;
+    while (1)
+    {
+    }
     struct ethhdr aa;
     aa.h_dest[0] = 0xff;
     aa.h_dest[1] = 0xff;

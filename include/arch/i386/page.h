@@ -35,4 +35,7 @@ __asm__ __volatile__("movl %%cr3,%%eax\n\tmovl %%eax,%%cr3": : :"ax")
 #define load_cr3(pgdir) \
     asm volatile("movl %0,%%cr3": :"r" (pgdir))
 
+struct PageDir *create_dir();
+unsigned int create_table(unsigned int attr);
+
 #endif

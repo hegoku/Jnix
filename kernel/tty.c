@@ -9,6 +9,20 @@ TTY tty_table[TTY_NUM];
 TTY *current_tty;
 
 static int do_request();
+static int do_read(struct file_descriptor *fd, char *buf, int nbyte);
+static int do_write(struct file_descriptor *fd, char *buf, int nbyte);
+struct file_operation tty_f_op = {
+    0,
+    do_read,
+    do_write,
+    // 0,
+    // 0,
+    0,
+    // 0,
+    0,
+    0,
+    0
+};
 
 void init_tty()
 {
@@ -16,7 +30,22 @@ void init_tty()
         tty_table[i]=tty_create(i);
     }
     current_tty = &tty_table[0];
+    dev_table[MAJOR_NR].name = "tty";
+    dev_table[MAJOR_NR].type = DEV_TYPE_CHR;
+    // dev_table[MAJOR_NR].request_fn = do_request;
+    
+    dev_table[MAJOR_NR].f_op = &tty_f_op;
+    install_dev(MAJOR_NR, "tty", DEV_TYPE_CHR, &tty_f_op);
+    add_sub(MKDEV(MAJOR_NR, 0), "tty0", 0, 0);
 }
+
+// void init_tty()
+// {
+//     for (int i=0; i < TTY_NUM;i++) {
+//         tty_table[i]=tty_create(i);
+//     }
+//     current_tty = &tty_table[0];
+// }
 
 TTY tty_create(unsigned char id)
 {

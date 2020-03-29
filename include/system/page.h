@@ -12,6 +12,8 @@
 
 #define __pa(v_addr) ((int)(v_addr)-PAGE_OFFSET)
 #define __va(p_addr) ((int)(p_addr)+PAGE_OFFSET)
+#define get_pt_entry_p_addr(entry) ((struct PageTable*)((int)(entry) & 0xfffff000))
+#define get_pt_entry_v_addr(entry) ((struct PageTable*)(__va(get_pt_entry_p_addr(entry))))
 
 #define MP_USE 1 //被使用
 #define MP_COW 2
@@ -26,5 +28,4 @@ extern struct Page *mem_map;
 
 int get_free_page();
 void free_page(unsigned int pyhsics_addr);
-
 #endif

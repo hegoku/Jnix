@@ -4,10 +4,13 @@ LD			= i386-elf-ld
 OBJCOPY     = i386-elf-objcopy
 CFLAGS      = -c -fno-builtin -mgeneral-regs-only -I ../../include/
 
-OBJS        = ../../build/8259A.o ../../build/idt.o ../../build/init.o ../../build/desc.o ../../build/pci.o ../../build/bios.o ../../build/timer.o \
-			  ../../build/vga.o 
+OBJS        = ../../build/arch/8259A.o ../../build/arch/idt.o ../../build/arch/init.o ../../build/arch/desc.o ../../build/arch/page.o ../../build/arch/pci.o ../../build/arch/bios.o ../../build/arch/timer.o \
+			  ../../build/arch/vga.o 
 
-all : everything debug
+all : mkdir everything debug
+
+mkdir :
+	mkdir -p ../../build/arch
 
 everything : arch/i386.o
 
@@ -17,28 +20,31 @@ debug:
 # %.o : %.c
 # 	$(CC) $(CFLAGS) -o ../build/$@ $<
 
-../../build/init.o : init.c
+../../build/arch/init.o : init.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/8259A.o : 8259A.c
+../../build/arch/8259A.o : 8259A.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/idt.o : idt.c
+../../build/arch/idt.o : idt.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/desc.o : desc.c
+../../build/arch/desc.o : desc.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/pci.o : pci.c
+../../build/arch/page.o : page.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/bios.o : bios.c
+../../build/arch/pci.o : pci.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/timer.o : timer.c
+../../build/arch/bios.o : bios.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../../build/vga.o : vga.c
+../../build/arch/timer.o : timer.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+../../build/arch/vga.o : vga.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 # ../../build/am79c793.o : am79c793.c
@@ -46,5 +52,4 @@ debug:
 
 
 arch/i386.o: $(OBJS)
-	mkdir -p ../../build/arch
 	$(LD) -r -o ../../build/arch/i386.o $(OBJS)

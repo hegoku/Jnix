@@ -2,6 +2,15 @@
 #include <system/page.h>
 #include <system/thread.h>
 #include <string.h>
+#include <stdio.h>
+#include <arch/i386/desc.h>
+#include <arch/i386/gdt.h>
+#include <sys/types.h>
+#include <system/init.h>
+
+#define INDEX_LDT_CS 0
+#define INDEX_LDT_DS 1
+#define PROC_STACK_TOP 0x8000000
 
 struct thread *thread_table=0;
 struct thread *current_thread=0;
@@ -12,32 +21,49 @@ int thread_int()
     current_thread=thread_table;
 }
 
-int thread_create(unsigned char *name, void *handle)
+struct thread* thread_create(unsigned char *name, void *handle)
 {
     struct thread *th=kzmalloc(sizeof(struct thread));
     th->pid=pid;
     th->parent_pid=-1;
     pid++;
 
-    unsigned char *np=name;
-    unsigned char th_np=name;
-    while(*np!='\0') {
-        th_np=np;
-        th_np++;
-        np++;
-    }
+    sprintf(th->name, name);
 
-    th->page_dir=(struct PageDir *)__va(PAGE_DIR_BASE);
+    // th->page_dir=(struct PageDir *)__va(PAGE_DIR_BASE);
+    th->page_dir=NULL;
 
-    if (thread_table==0) {
+    th->regs.cs = (GDT_SEL_USER_CODE&SA_RPL_MASK) | SA_RPL3;
+    th->regs.ds = (GDT_SEL_USER_DATA&SA_RPL_MASK) | SA_RPL3;
+    th->regs.es = (GDT_SEL_USER_DATA&SA_RPL_MASK) | SA_RPL3;
+    th->regs.fs = (GDT_SEL_USER_DATA&SA_RPL_MASK) | SA_RPL3;
+    th->regs.ss = (GDT_SEL_USER_DATA&SA_RPL_MASK) | SA_RPL3;
+    th->regs.gs = (GDT_SEL_VIDEO & SA_RPL_MASK) | SA_RPL3;
+    th->regs.eip = (unsigned int)handle;
+
+    th->regs.esp = PROC_STACK_TOP;
+    th->regs.eflags = 0x3202;
+
+    th->status = 0;
+    th->parent_pid = -1;
+
+    th->file_table = kzmalloc(sizeof(void*) * PROC_FILES_MAX_COUNT);
+
+    if (thread_table == 0)
+    {
         thread_table=th;
         th->next=th;
         th->prev=th;
-    } else {
+    }
+    else
+    {
         th->next=thread_table;
         th->prev=thread_table->prev;
         thread_table->prev->next=th;
         thread_table->prev=th;
     }
     current_thread=th;
+    return th;
 }
+
+core_initcall(thread_int);

@@ -1,0 +1,156 @@
+#include <system/system_call.h>
+#include <sys/types.h>
+#include <fs/fs.h>
+
+static int sys_get_ticks();
+
+sys_call_handler sys_call_table[142] = {
+    sys_get_ticks,
+    NULL,
+    NULL,
+    sys_read,
+    sys_write,
+    sys_open,
+    NULL,
+    NULL, //7
+    NULL,
+    NULL,
+    NULL,
+    NULL, //11
+    NULL, //12
+    NULL,
+    NULL,
+    NULL, //15
+    NULL,
+    NULL,
+    NULL, //18
+    NULL,
+    NULL, //20
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL, //27
+    NULL,
+    NULL, //29
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL, //39
+    NULL,
+    NULL, //41
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL, //61
+    NULL,
+    NULL,
+    NULL, //64
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL, //100
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL, //120
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL, //130
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL //141
+};
+
+static int sys_get_ticks()
+{
+    return 0;
+    // return ticks;
+}

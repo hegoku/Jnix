@@ -20,13 +20,13 @@ void __attribute__ ((interrupt)) inval_tss(struct interrupt_frame* frame, uword_
 void __attribute__ ((interrupt)) segment_not_present(struct interrupt_frame* frame, uword_t error_code);
 void __attribute__ ((interrupt)) stack_exception(struct interrupt_frame* frame, uword_t error_code);
 void __attribute__ ((interrupt)) general_protection(struct interrupt_frame* frame, uword_t error_code);
-void __attribute__ ((interrupt)) page_fault(struct interrupt_frame* frame, uword_t error_code);
-void __attribute__ ((interrupt)) copr_error(struct interrupt_frame* frame);
+extern void page_fault();
+void __attribute__((interrupt)) copr_error(struct interrupt_frame *frame);
 void __attribute__ ((interrupt)) ac_error(struct interrupt_frame* frame, uword_t error_code);
 void __attribute__ ((interrupt)) mc_error(struct interrupt_frame* frame);
 void __attribute__ ((interrupt)) xf_error(struct interrupt_frame* frame);
 
-void __attribute__ ((interrupt)) sys_call(struct interrupt_frame* frame);
+extern void sys_call();
 void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags);
 
 // GATE *idt;
@@ -133,15 +133,6 @@ void __attribute__ ((interrupt)) stack_exception(struct interrupt_frame* frame, 
 void __attribute__ ((interrupt)) general_protection(struct interrupt_frame* frame, uword_t error_code){
     exception_handler(INT_VECTOR_PROTECTION, error_code, frame->eip, frame->cs, frame->eflags);
 }
-void __attribute__ ((interrupt)) page_fault(struct interrupt_frame* frame, uword_t error_code){
-    unsigned int page = 0;
-    __asm__ __volatile__("movl %%cr2,%0"
-                         : "=r" (page)
-                         :
-                         : "ax");
-    printk("error_page: 0x%x  ", page);
-    exception_handler(INT_VECTOR_PAGE_FAULT, error_code, frame->eip, frame->cs, frame->eflags);
-}
 void __attribute__ ((interrupt)) copr_error(struct interrupt_frame* frame){
     exception_handler(INT_VECTOR_COPROC_ERR, 0xFFFFFFFF, frame->eip, frame->cs, frame->eflags);
 }
@@ -153,10 +144,6 @@ void __attribute__ ((interrupt)) mc_error(struct interrupt_frame* frame){
 }
 void __attribute__ ((interrupt)) xf_error(struct interrupt_frame* frame){
     exception_handler(INT_VECTOR_XF_ERR, 0xFFFFFFFF, frame->eip, frame->cs, frame->eflags);
-}
-
-void __attribute__ ((interrupt)) sys_call(struct interrupt_frame* frame){
-    exception_handler(INT_VECTOR_SYS_CALL, 0xFFFFFFFF, frame->eip, frame->cs, frame->eflags);
 }
 
 void exception_handler(int vec_no,int err_code,int eip,int cs,int eflags)
@@ -186,6 +173,14 @@ void exception_handler(int vec_no,int err_code,int eip,int cs,int eflags)
 			    "#XF SIMD Floating-Point Exception"
 	};
 
+    if (vec_no==INT_VECTOR_PAGE_FAULT) {
+        unsigned int page = 0;
+        __asm__ __volatile__("movl %%cr2,%0"
+                            : "=r" (page)
+                            :
+                            : "ax");
+        printk("error_page: 0x%x  ", page);
+    }
     printk("Exception! --> %s\n", err_msg[vec_no]);
     printk("EFLAGS:0x%x CS:0x%x EIP:0x%x\n", eflags, cs, eip);
     // DispColorStr("Exception! --> ", text_color);
@@ -198,7 +193,7 @@ void exception_handler(int vec_no,int err_code,int eip,int cs,int eflags)
 	// DispColorStr("EIP:", text_color);
 	// disp_int(eip);
 	// DispColorStr("PID:", text_color);
-	// disp_int(current_process->pid);
+	// disp_int(current_thread->pid);
 
 	if(err_code != 0xFFFFFFFF){
         printk("Error code:%x\n", err_code);

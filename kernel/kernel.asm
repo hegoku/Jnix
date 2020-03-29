@@ -1,5 +1,6 @@
 global _start
 global save
+global restart
 global	hwint00
 global	hwint01
 global	hwint02
@@ -16,15 +17,27 @@ global	hwint12
 global	hwint13
 global	hwint14
 global	hwint15
+global page_fault
+global sys_call
+global sys_call_0_param
+global sys_call_1_param
+global sys_call_2_param
+global sys_call_3_param
 
 extern main
 extern tss
 extern is_in_ring0
 extern current_thread
 extern irq_table
+extern do_wp_page
+extern do_no_page
+extern exception_handler
+extern sys_call_table
+extern schedule
 
 PAGE_OFFSET equ 0xC0000000
 STACKTOP equ 0x7e00
+INT_VECTOR_SYS_CALL equ 0x80 ;系统中断号
 
 %include "kernel/include/pm.inc"
 
@@ -131,7 +144,7 @@ restart:
     mov eax, [esp+P_K_ESP_ADDR]
     add eax, 1024*4
     mov dword[esp+P_K_ESP], eax ;重新设置进程内核态栈顶, 否则switch_to要堆栈溢出
-	lldt [esp + P_LDT_SEL]
+	;lldt [esp + P_LDT_SEL]
 	lea	eax, [esp + P_STACKTOP]
 	mov	dword [tss + TSS3_S_SP0], eax
 ret_to_proc:
@@ -240,3 +253,151 @@ hwint14:		; Interrupt routine for irq 14 (AT winchester)
 ; ALIGN	16
 hwint15:		; Interrupt routine for irq 15
 	hwint_slave	15
+
+page_fault:
+    pushad
+    push ds
+    push es
+    push fs
+    push gs
+
+    mov esi,ss
+    mov ds, esi
+    mov es,esi
+
+    mov esi, esp ;进程表起始地址
+
+    xchg [esp+RETADR-P_STACKBASE], eax	;// 取出错码到eax。
+
+    inc dword[is_in_ring0]
+    cmp dword[is_in_ring0], 0
+    jne .1
+    mov esp, [current_thread]
+    mov esp, [esp+P_K_ESP]
+    push restart
+    jmp .2
+.1:
+    push ret_to_proc
+.2:
+    ;sti
+	mov edx,cr2			;// 取引起页面异常的线性地址
+	test eax,1			;// 测试标志P，如果不是缺页引起的异常则跳转。
+	jne .l1
+
+    ;push dword[esi+EFLAGSREG]
+    ;push dword[esi+CSREG]
+    ;push dword[esi+EIPREG]
+    ;push eax
+    ;push 14		; vector_no	= 10h
+	;jmp	exception
+    ;add esp,4*3
+    push edx
+    push eax
+    call do_no_page
+	jmp .l2			
+.l1:
+    push edx			;// 将该线性地址和出错码压入堆栈，作为调用函数的参数。
+	push eax
+    call do_wp_page	;// 调用写保护处理函数（mm/page.c）。
+.l2: add esp,8		;// 丢弃压入栈的两个参数。
+    ret
+
+exception:
+	call exception_handler
+	add	esp, 4*2	; 让栈顶指向 EIP，堆栈中从顶向下依次是：EIP、CS、EFLAGS
+	hlt
+
+sys_call:
+    call save
+    push esi
+
+    push edx
+    push ecx
+    push ebx
+	call [sys_call_table+4*eax]
+    add esp, 4*3
+    pop esi
+    mov [esi+EAXREG-P_STACKBASE], eax ;保存 [sys_call_table+4*eax]  函数的返回值到进程表的eax寄存器以便获取
+
+    jmp ret_from_sys_call
+.1:
+    ret
+ret_from_sys_call:
+    cmp dword[is_in_ring0], 0 ;如果在内核态就不用判断进程是否在TASK_RUNNING状态
+    jne .1
+    mov eax, [current_thread]
+    mov eax, [eax+P_STATUS]
+    cmp eax, 0
+    jne schedule
+.1:
+    ret
+
+; void sys_call_0_param(int index);
+sys_call_0_param:
+    push esi
+	mov	esi, esp
+    push ebx
+    push ecx
+    push edx
+	mov	eax, [esi + 8]	; system call table index, the index of sys_call_table[]
+	mov	ebx, 0	; not used
+	mov	ecx, 0	; not used
+	mov	edx, 0	; not used
+    int INT_VECTOR_SYS_CALL
+    pop edx
+    pop ecx
+    pop ebx
+    pop esi
+    ret
+
+
+sys_call_1_param:
+    push esi
+	mov	esi, esp
+    push ebx
+    push ecx
+    push edx
+	mov	eax, [esi + 8]	; system call table index, the index of sys_call_table[]
+	mov	ebx, [esi + 12]
+	mov	ecx, 0	; not used
+	mov	edx, 0	; not used
+    int INT_VECTOR_SYS_CALL
+    pop edx
+    pop ecx
+    pop ebx
+    pop esi
+    ret
+
+sys_call_2_param:
+    push esi
+	mov	esi, esp
+    push ebx
+    push ecx
+    push edx
+	mov	eax, [esi + 8]	; system call table index, the index of sys_call_table[]
+	mov	ebx, [esi + 12]
+	mov	ecx, [esi + 16]
+	mov	edx, 0	; not used
+    int INT_VECTOR_SYS_CALL
+    pop edx
+    pop ecx
+    pop ebx
+    pop esi
+    ret
+
+sys_call_3_param:
+    push esi
+	mov	esi, esp
+    push ebx
+    push ecx
+    push edx
+	mov	eax, [esi + 8]	; system call table index, the index of sys_call_table[]
+	mov	ebx, [esi + 12]
+	mov	ecx, [esi + 16]
+	mov	edx, [esi + 20]
+    int INT_VECTOR_SYS_CALL
+    pop edx
+    pop ecx
+    pop ebx
+    pop esi
+    ret
