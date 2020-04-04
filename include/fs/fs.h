@@ -86,9 +86,9 @@ struct file_operation{
 	int (*read) (struct file_descriptor *fd, char *buf, int);
 	int (*write) (struct file_descriptor *fd, char *buf, int);
 	int (*readdir) (struct inode *inode, struct file_descriptor *fd, struct linux_dirent *, int);
-	// int (*select) (struct inode *inode, struct file *, int, select_table *);
+	int (*select) (struct inode *inode, struct file *, int, struct select_table *);
 	int (*ioctl) (struct inode *inode, struct file_descriptor *fd, unsigned int, unsigned long);
-	// int (*mmap) (struct inode *inode, struct file_descriptor *fd, unsigned long, size_t, int, unsigned long);
+	int (*mmap) (struct inode *inode, struct file_descriptor *fd, unsigned long, size_t, int, unsigned long);
 	int (*open) (struct inode *inode, struct file_descriptor *fd);
 	void (*release) (struct inode *inode, struct file_descriptor *fd);
 	int (*fsync) (struct inode *inode, struct file_descriptor *fd);
@@ -115,6 +115,10 @@ struct nameidata {
     struct dir_entry *dir;
     char *last_name;
     int last_len;
+};
+
+struct select_table{
+
 };
 
 struct s_stat{

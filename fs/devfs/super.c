@@ -2,19 +2,20 @@
 #include <sys/types.h>
 #include <system/mm.h>
 #include <fs/fs.h>
+#include <system/init.h>
 
-static struct dir_entry *rootfs_mount(struct file_system_type *fs_type, int dev_num);
+static struct dir_entry *devfs_mount(struct file_system_type *fs_type, int dev_num);
 static int f_op_write(struct file_descriptor *fd, char *buf, int nbyte);
 static int f_op_read(struct file_descriptor *fd, char *buf, int nbyte);
 
 static int rootfs_lookup(struct dir_entry *dir, const char *name, int len, struct dir_entry **res_dir);
 
-struct file_system_type rootfs_fs_type = {
-    name: "rootfs",
-    mount: rootfs_mount,
+struct file_system_type devfs_fs_type = {
+    name: "devfs",
+    mount: devfs_mount,
     next: NULL
 };
-struct file_operation rootfs_f_op={
+struct file_operation devfs_f_op={
     NULL,
     f_op_read,
     f_op_write,
@@ -26,9 +27,9 @@ struct file_operation rootfs_f_op={
     NULL,
     NULL
 };
-struct inode_operation rootfs_inode_op = {
+struct inode_operation devfs_inode_op = {
     NULL,
-    rootfs_lookup,
+    devfs_lookup,
     NULL,
     NULL,
     NULL,
@@ -41,9 +42,9 @@ struct inode_operation rootfs_inode_op = {
     NULL,
 };
 
-static struct dir_entry *rootfs_mount(struct file_system_type *fs_type, int dev_num)
+static struct dir_entry *devfs_mount(struct file_system_type *fs_type, int dev_num)
 {
-    struct super_block *sb = get_block(0);
+    struct super_block *sb = get_block(dev_num);
     fs_type->sb_table=sb;
 
     sb->fs_type = fs_type;
@@ -51,8 +52,8 @@ static struct dir_entry *rootfs_mount(struct file_system_type *fs_type, int dev_
     struct inode *new_inode=get_inode();
     new_inode->sb=sb;
     new_inode->dev_num=sb->dev_num;
-    new_inode->f_op=&rootfs_f_op;
-    new_inode->inode_op = &rootfs_inode_op;
+    new_inode->f_op=&devfs_f_op;
+    new_inode->inode_op = &devfs_inode_op;
     new_inode->mode = FILE_MODE_DIR;
 
     struct dir_entry *new_dir=get_dir();
@@ -68,9 +69,10 @@ static struct dir_entry *rootfs_mount(struct file_system_type *fs_type, int dev_
     return new_dir;
 }
 
-void init_rootfs()
+void init_devfs()
 {
-    register_filesystem(&rootfs_fs_type);
+    register_filesystem(&devfs_fs_type);
+    sys_mkdir("/dev", 1);
 }
 
 static int f_op_write(struct file_descriptor *fd, char *buf, int nbyte)
@@ -83,7 +85,9 @@ static int f_op_read(struct file_descriptor *fd, char *buf, int nbyte)
     return nbyte;
 }
 
-int rootfs_lookup(struct dir_entry *dir, const char *name, int len, struct dir_entry **res_dir)
+int devfs_lookup(struct dir_entry *dir, const char *name, int len, struct dir_entry **res_dir)
 {
     return 0;
 }
+
+core_initcall(init_devfs);

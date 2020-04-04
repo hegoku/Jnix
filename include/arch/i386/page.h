@@ -37,5 +37,6 @@ __asm__ __volatile__("movl %%cr3,%%eax\n\tmovl %%eax,%%cr3": : :"ax")
 
 struct PageDir *create_dir();
 unsigned int create_table(unsigned int attr);
+void copy_page(struct PageDir *pd, struct PageDir **res);
 
 #endif

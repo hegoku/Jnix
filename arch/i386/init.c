@@ -10,24 +10,14 @@
 #include <arch/i386/bios.h>
 #include <system/tty.h>
 #include <stdio.h>
-#include <drivers/i386/am79c793.h>
-#include <net/ether.h>
-#include <net/arp.h>
 #include <string.h>
 #include <system/mm.h>
 #include <arch/i386/timer.h>
-#include <net/netdevice.h>
-#include <system/init.h>
-#include <net/net.h>
-#include <net/icmp.h>
-#include <net/ip.h>
 
 TSS tss={
     // .esp0 = TOP_OF_KERNEL_STACK,
 	.ss0 = GDT_SEL_KERNEL_DATA
 };
-
-void sendNet();
 
 // unsigned short swap_uint16(unsigned short val) {
 //     return (val << 8) | (val >> 8);
@@ -99,12 +89,12 @@ static void reset_paging(int mem_size)
     {
         for (i = 0; i < 1024; i++)
         {
-            // pt->entry[i] = a | PG_P | PG_RWW | PG_USS;
-            pt->entry[i] = a | PG_P | PG_RWW | PG_USU;
+            pt->entry[i] = a | PG_P | PG_RWW | PG_USS;
+            // pt->entry[i] = a | PG_P | PG_RWW | PG_USU;
             a += 4096;
         }
-        // pg->entry[j+768] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USS;
-        pg->entry[j+768] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USU;
+        pg->entry[j+768] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USS;
+        // pg->entry[j+768] = __pa(((unsigned int)pt)) | PG_P | PG_RWW | PG_USU;
         pt++;
     }
     load_cr3(PAGE_DIR_BASE);
@@ -219,72 +209,4 @@ void init_arch()
     pci_select_drivers();
     pcibios_irq_init();
     timer_init();
-
-    do_initcalls();
-    // sendNet();
-}
-
-void sendNet()
-{
-    am79c793.ip=inet_aton("10.0.2.12");
-    // unsigned char *mac=0;
-    // unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
-    int a=0;
-    unsigned char *mac = 0;
-    while (mac == 0)
-    {
-        mac=arp_find(&am79c793, inet_aton("10.0.2.4"));
-        if (mac==0) {
-            arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(inet_aton("10.0.2.4")), &am79c793, htonl(am79c793.ip), 0, 0, 0);
-        }
-        // a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
-    }
-    // icmp_echo(&am79c793, 1, 1, inet_aton("10.0.2.4"));
-    // icmp_timestamp(&am79c793, 1, 1, inet_aton("10.0.2.4"), 0);
-    icmp_hostano(&am79c793, 0);
-    // icmp_echo(&am79c793, 1, 2, 0x0a000202);
-    // arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(0x0a000202), &am79c793, htonl(0x0a00020f), 0, 0, 0);
-    return;
-    while (1)
-    {
-    }
-    struct ethhdr aa;
-    aa.h_dest[0] = 0xff;
-    aa.h_dest[1] = 0xff;
-    aa.h_dest[2] = 0xff;
-    aa.h_dest[3] = 0xff;
-    aa.h_dest[4] = 0xff;
-    aa.h_dest[5] = 0xff;
-    memcpy(aa.h_source, TO_AMDATA(am79c793.custom_data)->init_block.mac, sizeof(aa.h_source));
-    aa.h_proto = htons(ETH_P_ARP);
-
-    struct arphdr bb;
-    bb.ar_hrd = htons(ARPHRD_ETHER);
-    bb.ar_pro = htons(ETH_P_IP);
-    bb.ar_hln = 6;
-    bb.ar_pln = 4;
-    bb.ar_op = htons(ARPOP_REQUEST);
-    memcpy(bb.ar_sha, aa.h_source, sizeof(bb.ar_sha));
-    bb.ar_sip[0] = 0x0a;
-    bb.ar_sip[1] = 0x0;
-    bb.ar_sip[2] = 0x2;
-    bb.ar_sip[3] = 0xf;
-    memset(bb.ar_tha, 0, sizeof(bb.ar_tha));
-    bb.ar_tip[0] = 0x0a;
-    bb.ar_tip[1] = 0x00;
-    bb.ar_tip[2] = 0x2;
-    bb.ar_tip[3] = 0x02;
-    // bb.ar_tip[0] = 0xc0;
-    // bb.ar_tip[1] = 0xa8;
-    // bb.ar_tip[2] = 0x1;
-    // bb.ar_tip[3] = 0x50;
-
-    unsigned char *temp = kzmalloc(sizeof(bb)+sizeof(aa));
-    memcpy(temp, &aa, sizeof(aa));
-    memcpy(temp + sizeof(aa), &bb, sizeof(bb));
-
-    // for (int i = 0; i < 5;i++) {
-
-        am79c793.send(&am79c793, temp, sizeof(aa)+sizeof(bb));
-    // }
 }

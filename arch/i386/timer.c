@@ -4,7 +4,6 @@
 #include <arch/i386/idt.h>
 #include <arch/i386/8295A.h>
 #include <stdio.h>
-#include <net/skbuffer.h>
 #include <sys/types.h>
 
 // static void __attribute__((interrupt)) timer_interrupt_handle(struct interrupt_frame *frame);
@@ -22,21 +21,7 @@ void timer_init()
 
 static void timer_interrupt_handle(int irq, void *dev_id)
 {
-    // __asm__ __volatile__ ("pushad\n
-    //     push ds\n
-    //     push es\n
-    //     push fs\n
-    //     push gs":::);
-    // printk("@");
-    // disable_8259A_irq(CLOCK_IRQ);
-    skb_handle_recv();
-    // printk("!");
-    // enable_8259A_irq(CLOCK_IRQ);
-    // __asm__ __volatile__ ("pop gs\n
-    //     pop fs\n
-    //     pop es\n
-    //     push ds\n
-    //     popad":::);
+    // schedule();
     // printk("#");
 }
 

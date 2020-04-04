@@ -348,6 +348,7 @@ P_K_ESP     equ P_STACKTOP
 P_K_ESP_ADDR equ P_K_ESP + 4
 P_PID       equ P_K_ESP_ADDR     + 8
 P_STATUS    equ P_PID +4
+P_FLAG      equ P_STATUS +4
 
 
 TSS3_S_SP0	equ	4
