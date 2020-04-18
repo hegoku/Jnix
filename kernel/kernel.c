@@ -17,6 +17,8 @@
 #include <drivers/i386/am79c793.h>
 #include <net/ether.h>
 #include <net/arp.h>
+#include <net/udp.h>
+#include <string.h>
 
 int is_in_ring0=1;
 static void init();
@@ -31,6 +33,7 @@ void main()
     init_arch();
     init_rootfs();
     do_initcalls();
+    handle_net();
     asm("cli");
     struct thread *init_p = thread_create("init", init, THREAD_TYPE_KERNEL);
     // init_tty();
@@ -167,8 +170,42 @@ static void init()
 
 static void handle_net()
 {
-    printk("11\n");
-    while(1){
+    am79c793.ip=inet_aton("10.0.2.12");
+    // unsigned char *mac=0;
+    // unsigned char null_mac[]={'0', '0', '0', '0', '0', '0'};
+    int a=0;
+    unsigned char *mac = 0;
+    while (mac == 0)
+    {
+        mac=arp_find(&am79c793, inet_aton("10.0.2.4"));
+        if (mac==0) {
+            arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(inet_aton("10.0.2.4")), &am79c793, htonl(am79c793.ip), 0, 0, 0);
+        }
+        // a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
+    }
+    mac = 0;
+    while (mac == 0)
+    {
+        mac=arp_find(&am79c793, inet_aton("10.0.2.2"));
+        if (mac==0) {
+            arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(inet_aton("10.0.2.2")), &am79c793, htonl(am79c793.ip), 0, 0, 0);
+        }
+        // a=mac[0]+mac[1]+mac[2]+mac[3]+mac[4]+mac[5];
+    }
+    // icmp_echo(&am79c793, 1, 1, inet_aton("10.0.2.4"));
+    // icmp_timestamp(&am79c793, 1, 1, inet_aton("10.0.2.4"), 0);
+    // icmp_hostano(&am79c793, 0);
+    char aaa[] = "fds#";
+    char *bbb = kzmalloc(2033);
+    memset(bbb, 'A', 100);
+    memset(bbb + 100, 'B', 1800);
+    memset(bbb + 100+1800, 'C', 133);
+    // udp_send(&am79c793, inet_aton("10.0.2.4"), 3333, 3333, bbb, 2033);
+    udp_send(&am79c793, inet_aton("10.0.2.2"), 5555, 3333, aaa, strlen(aaa));
+    // icmp_echo(&am79c793, 1, 2, 0x0a000202);
+    // arp_send(ARPOP_REQUEST, ETH_P_ARP, htonl(0x0a000202), &am79c793, htonl(0x0a00020f), 0, 0, 0);
+    while (1)
+    {
         // skb_handle_recv();
     }
 }

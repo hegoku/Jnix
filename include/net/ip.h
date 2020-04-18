@@ -79,6 +79,11 @@
 #define IP_P_UDP 0x11
 #define IP_P_IPv6 0x29 //IPv6 封装
 
+#define IPQ_HASHSZ   64
+//标识、源地址、目的地址、协议
+#define ipqhashfn(id, saddr, daddr, prot) \
+    ((((id) >> 1) ^ (saddr) ^ (daddr) ^ (prot)) & (IPQ_HASHSZ - 1)) 
+
 struct iphdr {
     //网络是big endian, x86是little endian, 所以要反过来
     unsigned char   ihl:4;

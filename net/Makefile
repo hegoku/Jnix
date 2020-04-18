@@ -5,7 +5,7 @@ OBJCOPY     = i386-elf-objcopy
 OBJDUMP     = i386-elf-objdump
 CFLAGS      = -c -fno-builtin -mgeneral-regs-only -I ../include/
 
-OBJS        = ../build/netdevice.o ../build/arp.o ../build/ip.o ../build/icmp.o ../build/skbuffer.o
+OBJS        = ../build/netdevice.o ../build/arp.o ../build/ip.o ../build/icmp.o ../build/udp.o ../build/skbuffer.o
 
 all : everything debug
 
@@ -27,6 +27,9 @@ debug:
 	$(CC) $(CFLAGS) -o $@ $<
 
 ../build/icmp.o : icmp.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+../build/udp.o : udp.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 ../build/skbuffer.o : skbuffer.c

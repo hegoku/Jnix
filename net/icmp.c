@@ -55,7 +55,7 @@ int icmp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
     struct iphdr *ip = (struct iphdr*)((unsigned int)packet);
     unsigned short body_offset = (unsigned short)ip->ihl*4; //ip数据部分开始位置
     struct icmphdr *icmp=(struct icmphdr*)((unsigned int)ip+body_offset);
-    size -= sizeof(struct iphdr);
+    // size -= sizeof(struct iphdr);
     if (ip_hdr_checksum((unsigned short*)icmp, size)!=0) {
         return -1;
     }

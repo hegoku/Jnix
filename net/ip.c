@@ -2,6 +2,7 @@
 #include <net/ip.h>
 #include <net/netdevice.h>
 #include <net/icmp.h>
+#include <net/udp.h>
 #include <stdio.h>
 #include <net/arp.h>
 #include <string.h>
@@ -31,33 +32,90 @@ int ip_send(int type, unsigned short id, unsigned int dest_ip, unsigned int src_
             return -1;
         }
     }
-    
-    
-    unsigned int buffer_size = sizeof(struct ethhdr) + sizeof(struct iphdr) + size;
-    unsigned char *buffer=kzmalloc(buffer_size);
-    struct ethhdr *eth = (struct ethhdr*)buffer;
-    if (dev_hard_header(eth, dev, ETH_P_IP, dest_hw, dev->dev_addr)<0) {
-        goto out;
+
+    unsigned int mtu = 1500 - sizeof(struct iphdr);
+    if (mtu<size) {
+        unsigned int current_size = 0;
+        unsigned char *data_p = data;
+        unsigned int frag_off = 0;
+        while (size > 0)
+        {
+            current_size = size;
+            if (current_size > mtu)
+            {
+                current_size = mtu;
+            }
+            if (current_size<size) {
+                current_size &= ~7;   //取8字节的整数倍
+            }
+
+            unsigned int buffer_size = sizeof(struct ethhdr)  + current_size;
+            unsigned int t_data_size = current_size - sizeof(struct iphdr);
+            unsigned char *buffer = kzmalloc(buffer_size);
+            struct ethhdr *eth = (struct ethhdr*)buffer;
+            if (dev_hard_header(eth, dev, ETH_P_IP, dest_hw, dev->dev_addr)<0) {
+                kfree(buffer, buffer_size);
+                return -1;
+            }
+
+            struct iphdr *ip=(struct iphdr *)((unsigned int)buffer+sizeof(struct ethhdr));
+            ip->daddr=htonl(dest_ip);
+            ip->saddr=htonl(src_ip);
+            ip->protocol=type;
+            ip->version=4;
+            ip->ihl=sizeof(struct iphdr)/4;
+            ip->tot_len=htons(current_size);
+            ip->ttl=0x40;
+            if (size>mtu) { //不是最后一片
+                ip->frag_off = 0x2000;
+            }
+            ip->frag_off |= frag_off;
+            ip->frag_off = htons(ip->frag_off);
+            ip->id = htons(id);
+
+            memcpy((void*)((unsigned int)ip+sizeof(struct iphdr)), data_p, t_data_size);
+            
+            ip->check=htons(ip_hdr_checksum((unsigned short*)ip, sizeof(struct iphdr)));
+
+            int ret=dev->send(dev, buffer, buffer_size);
+            if (ret<0) {
+                return ret;
+            }
+
+            frag_off += current_size / 8;
+            data_p += t_data_size;
+            size -= current_size;
+        }
+        return 0;
     }
+    else
+    {
+        unsigned int buffer_size = sizeof(struct ethhdr) + sizeof(struct iphdr) + size;
+        unsigned char *buffer=kzmalloc(buffer_size);
+        struct ethhdr *eth = (struct ethhdr*)buffer;
+        if (dev_hard_header(eth, dev, ETH_P_IP, dest_hw, dev->dev_addr)<0) {
+            kfree(buffer, buffer_size);
+            return -1;
+        }
 
-    struct iphdr *ip=(struct iphdr *)((unsigned int)buffer+sizeof(struct ethhdr));
-    ip->daddr=htonl(dest_ip);
-    ip->saddr=htonl(src_ip);
-    ip->protocol=type;
-    ip->version=4;
-    ip->ihl=sizeof(struct iphdr)/4;
-    ip->tot_len=htons(sizeof(struct iphdr)+size);
-    ip->ttl=0x40;
-    ip->id=htons(id);
+        struct iphdr *ip=(struct iphdr *)((unsigned int)buffer+sizeof(struct ethhdr));
+        ip->daddr=htonl(dest_ip);
+        ip->saddr=htonl(src_ip);
+        ip->protocol=type;
+        ip->frag_off = htons(0x4000);
+        ip->version = 4;
+        ip->ihl=sizeof(struct iphdr)/4;
+        ip->tot_len=htons(sizeof(struct iphdr)+size);
+        ip->ttl=0x40;
+        ip->id=htons(id);
 
-    memcpy((void*)((unsigned int)ip+sizeof(struct iphdr)), data, size);
-    
-    ip->check=htons(ip_hdr_checksum((unsigned short*)ip, sizeof(struct iphdr)+size));
+        memcpy((void*)((unsigned int)ip+sizeof(struct iphdr)), data, size);
+        
+        ip->check=htons(ip_hdr_checksum((unsigned short*)ip, sizeof(struct iphdr)));
+        ip_hdr_checksum((unsigned short *)ip, sizeof(struct iphdr) + size);
 
-    return dev->send(dev, buffer, buffer_size);
-out:
-    kfree(buffer, buffer_size);
-    return -1;
+        return dev->send(dev, buffer, buffer_size);
+    }
 }
 
 int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
@@ -65,12 +123,12 @@ int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
     struct iphdr *ip = (struct iphdr*)((unsigned int)packet + sizeof(struct ethhdr));
     size -= sizeof(struct ethhdr);
 
-    if (ip_hdr_checksum((unsigned short*)ip, size)!=0) {
+    if (ip_hdr_checksum((unsigned short*)ip, sizeof(struct iphdr))!=0) {
         return -1;
     }
 
     printk("recv: ");
-    for(int i = 0; i < size; i++)
+    for(int i = sizeof(struct ethhdr); i < size; i++)
     {
         printk("%02x ", packet[i]);
     }
@@ -79,10 +137,11 @@ int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
     switch (ip->protocol)
     {
         case IP_P_ICMP:
-            return icmp_rcv((unsigned char*)ip, size, dev);
+            return icmp_rcv((unsigned char*)ip, ntohs(ip->tot_len)-ip->ihl*4, dev);
         case IP_P_TCP:
             break;
         case IP_P_UDP:
+            return udp_rcv((unsigned char*)ip, ntohs(ip->tot_len)-ip->ihl*4, dev);
             break;
     }
     return -1;
@@ -91,7 +150,7 @@ int ip_rcv(unsigned char *packet, unsigned int size, struct net_device *dev)
 unsigned short ip_hdr_checksum(unsigned short* buffer, int size)
 {
     unsigned int cksum = 0;
-    while(size>1)
+    while (size > 1)
     {
         cksum += htons(*buffer++);
         size -= sizeof(unsigned short);

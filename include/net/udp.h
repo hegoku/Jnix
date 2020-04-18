@@ -1,12 +1,22 @@
 #ifndef _NET_UDP_H
 #define _NET_UDP_H
 
+#include <net/netdevice.h>
+
 struct udphdr {
 	unsigned short	source;
 	unsigned short	dest;
 	unsigned short	len;
 	unsigned short	check;
-};
+}__attribute__((packed));
+
+struct udpfakehdr{
+    unsigned int src_ip;
+    unsigned int dest_ip;
+    unsigned char ttl;
+	unsigned char protocol;
+    unsigned short len;
+}__attribute__((packed));
 
 /* UDP socket options */
 #define UDP_CORK	1	/* Never send partially complete segments */
@@ -24,5 +34,8 @@ struct udphdr {
 #define UDP_ENCAP_GTP1U		5 /* 3GPP TS 29.060 */
 #define UDP_ENCAP_RXRPC		6
 #define TCP_ENCAP_ESPINTCP	7 /* Yikes, this is really xfrm encap types. */
+
+int udp_rcv(unsigned char *packet, unsigned int size, struct net_device *dev);
+int udp_send(struct net_device *dev, unsigned int dest_ip, unsigned int dest_port, unsigned int src_port, unsigned char *data, unsigned int data_size);
 
 #endif

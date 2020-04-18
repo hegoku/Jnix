@@ -21,6 +21,7 @@ void timer_init()
 
 static void timer_interrupt_handle(int irq, void *dev_id)
 {
+    skb_handle_recv();
     // schedule();
     // printk("#");
 }
@@ -34,7 +35,7 @@ static void timer_interrupt_handle(int irq, void *dev_id)
 //     //     push gs":::);
 //     // printk("@");
 //     disable_8259A_irq(CLOCK_IRQ);
-//     skb_handle_recv();
+    // skb_handle_recv();
 //     // printk("!");
 //     enable_8259A_irq(CLOCK_IRQ);
 //     // __asm__ __volatile__ ("pop gs\n
